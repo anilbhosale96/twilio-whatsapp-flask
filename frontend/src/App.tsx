@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveDashboard } from './hooks/useLiveDashboard';
 import { FigmaLanding } from './components/FigmaLanding';
+import { FigmaAuth } from './components/FigmaAuth';
 import { FigmaSidebar } from './components/FigmaSidebar';
 import type { FigmaPage } from './components/FigmaSidebar';
 import { FigmaTopbar } from './components/FigmaTopbar';
@@ -37,8 +38,9 @@ export const App: React.FC = () => {
     sendSimulationMessage
   } = useLiveDashboard();
 
-  // Mode: Landing Showcase vs Live Store App
-  const [viewMode, setViewMode] = useState<'app' | 'landing'>('app');
+  // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
+  const [viewMode, setViewMode] = useState<'app' | 'landing' | 'auth'>('app');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [activePage, setActivePage] = useState<FigmaPage>('Dashboard');
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -83,6 +85,17 @@ export const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const handleLogout = () => {
+    setViewMode('auth');
+    setAuthMode('login');
+    showToast('You have been logged out.');
+  };
+
+  const handleLoginSuccess = () => {
+    setViewMode('app');
+    showToast('Welcome back, Rajesh! Live dashboard ready.');
+  };
+
   const handleConfirmUpdate = async () => {
     setIsConfirmModalOpen(false);
     showToast('Stock updated successfully! Synced via SSE.');
@@ -97,11 +110,19 @@ export const App: React.FC = () => {
     return ok;
   };
 
-  // If user is on the Public Landing page
+  // 1. Public Landing page view
   if (viewMode === 'landing') {
     return (
       <FigmaLanding
         onOpenApp={() => setViewMode('app')}
+        onOpenLogin={() => {
+          setAuthMode('login');
+          setViewMode('auth');
+        }}
+        onOpenRegister={() => {
+          setAuthMode('register');
+          setViewMode('auth');
+        }}
         isDark={isDark}
         onToggleDark={toggleDarkMode}
         onOpenPrivacy={() => {
@@ -116,10 +137,24 @@ export const App: React.FC = () => {
     );
   }
 
-  // App Shell View (Matching Figma https://flash-fruit-47779733.figma.site)
+  // 2. Authentication view (Login / Register)
+  if (viewMode === 'auth') {
+    return (
+      <FigmaAuth
+        mode={authMode}
+        setMode={(m) => setAuthMode(m)}
+        onDone={handleLoginSuccess}
+        onBack={() => setViewMode('landing')}
+        isDark={isDark}
+        onToggleDark={toggleDarkMode}
+      />
+    );
+  }
+
+  // 3. Live App Shell View (Matching Figma https://flash-fruit-47779733.figma.site)
   return (
     <div className="app-shell min-h-screen">
-      {/* Sidebar */}
+      {/* Sidebar with Log Out Action */}
       <FigmaSidebar
         page={activePage}
         setPage={(page) => {
@@ -131,11 +166,12 @@ export const App: React.FC = () => {
         alertsCount={alerts?.count || summary?.alerts_count || 0}
         shopName={settings?.name}
         onGoToLanding={() => setViewMode('landing')}
+        onLogout={handleLogout}
       />
 
       {/* Main Layout Area */}
       <div className="app-main">
-        {/* Top Header */}
+        {/* Top Header with Dark/Light Toggle & Log Out */}
         <FigmaTopbar
           pageTitle={selectedProduct ? selectedProduct.name : activePage}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
@@ -152,6 +188,7 @@ export const App: React.FC = () => {
             setActivePage('Alerts');
             setSelectedProduct(null);
           }}
+          onLogout={handleLogout}
         />
 
         {/* Content Body */}

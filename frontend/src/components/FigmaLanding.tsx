@@ -3,6 +3,8 @@ import { FigmaIcon } from './FigmaIcon';
 
 interface FigmaLandingProps {
   onOpenApp: () => void;
+  onOpenLogin: () => void;
+  onOpenRegister: () => void;
   isDark: boolean;
   onToggleDark: () => void;
   onOpenPrivacy: () => void;
@@ -11,6 +13,8 @@ interface FigmaLandingProps {
 
 export const FigmaLanding: React.FC<FigmaLandingProps> = ({
   onOpenApp,
+  onOpenLogin,
+  onOpenRegister,
   isDark,
   onToggleDark,
   onOpenPrivacy,
@@ -48,11 +52,11 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
             <span>{isDark ? "Light" : "Dark"}</span>
           </button>
 
-          <button className="login-link cursor-pointer" onClick={onOpenApp}>
+          <button className="login-link cursor-pointer" onClick={onOpenLogin}>
             Log in
           </button>
-          <button className="btn btn-primary cursor-pointer" onClick={onOpenApp}>
-            Open Store App
+          <button className="btn btn-primary cursor-pointer" onClick={onOpenRegister}>
+            Get Started
           </button>
         </div>
       </header>
@@ -84,11 +88,8 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
                 Open Live Store App
                 <FigmaIcon name="arrow" size={16} />
               </button>
-              <button
-                className="btn btn-secondary cursor-pointer"
-                onClick={() => document.querySelector('#how')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                See How It Works
+              <button className="btn btn-secondary cursor-pointer" onClick={onOpenLogin}>
+                Log in to Account
               </button>
             </div>
 
@@ -401,3 +402,4 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
     </div>
   );
 };
+

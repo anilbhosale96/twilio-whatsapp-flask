@@ -13,6 +13,7 @@ interface FigmaTopbarProps {
   shopName?: string | null;
   onAlertsClick: () => void;
   onSearchChange?: (q: string) => void;
+  onLogout?: () => void;
 }
 
 export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
@@ -25,7 +26,8 @@ export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
   alertsCount,
   shopName,
   onAlertsClick,
-  onSearchChange
+  onSearchChange,
+  onLogout
 }) => {
   return (
     <header className="topbar">
@@ -117,7 +119,11 @@ export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
         </button>
 
         {/* Profile Card */}
-        <button className="profile cursor-pointer" title="Store Owner Profile">
+        <button
+          className="profile cursor-pointer"
+          onClick={onLogout}
+          title="Click to Log Out"
+        >
           <span>RS</span>
           <div>
             <b>Rajesh Sharma</b>
@@ -125,9 +131,23 @@ export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
           </div>
           <FigmaIcon name="chevron" size={14} />
         </button>
+
+        {/* Explicit Logout Button */}
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="h-[38px] px-2.5 rounded-lg border border-[#e5eaf2] dark:border-[#1e293b] text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center space-x-1 cursor-pointer transition-colors"
+            title="Log Out of Store"
+          >
+            <FigmaIcon name="logout" size={14} />
+            <span className="hidden xl:inline">Log out</span>
+          </button>
+        )}
       </div>
 
       <span className="mobile-title">{pageTitle}</span>
     </header>
   );
 };
+

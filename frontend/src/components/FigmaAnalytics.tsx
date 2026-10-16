@@ -203,3 +203,4 @@ export const FigmaAnalytics: React.FC<FigmaAnalyticsProps> = ({ inventory }) => 
     </div>
   );
 };
+

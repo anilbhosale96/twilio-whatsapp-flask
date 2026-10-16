@@ -137,3 +137,4 @@ export const FigmaReports: React.FC<FigmaReportsProps> = ({
     </div>
   );
 };
+

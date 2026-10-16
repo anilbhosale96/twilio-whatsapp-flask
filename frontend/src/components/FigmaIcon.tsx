@@ -125,3 +125,4 @@ export const FigmaIcon: React.FC<FigmaIconProps> = ({ name, size = 18, className
       return <Package {...props} />;
   }
 };
+

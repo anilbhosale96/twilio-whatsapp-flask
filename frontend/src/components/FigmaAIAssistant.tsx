@@ -131,3 +131,4 @@ export const FigmaAIAssistant: React.FC<FigmaAIAssistantProps> = ({
     </div>
   );
 };
+

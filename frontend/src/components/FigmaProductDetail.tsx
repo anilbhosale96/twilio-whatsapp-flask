@@ -235,3 +235,4 @@ export const FigmaProductDetail: React.FC<FigmaProductDetailProps> = ({
     </div>
   );
 };
+

@@ -205,3 +205,4 @@ export const FigmaWhatsAppActivity: React.FC<FigmaWhatsAppActivityProps> = ({ tr
     </div>
   );
 };
+

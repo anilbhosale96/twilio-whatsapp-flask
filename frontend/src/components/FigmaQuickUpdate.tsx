@@ -200,3 +200,4 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
     </section>
   );
 };
+

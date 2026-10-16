@@ -140,3 +140,4 @@ export const FigmaAlerts: React.FC<FigmaAlertsProps> = ({ alerts, onMarkReordere
     </div>
   );
 };
+

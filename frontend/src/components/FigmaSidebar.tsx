@@ -22,6 +22,7 @@ interface FigmaSidebarProps {
   alertsCount: number;
   shopName?: string | null;
   onGoToLanding: () => void;
+  onLogout: () => void;
 }
 
 const WORKSPACE_NAV: Array<[FigmaPage, string]> = [
@@ -48,7 +49,8 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
   close,
   alertsCount,
   shopName,
-  onGoToLanding
+  onGoToLanding,
+  onLogout
 }) => {
   return (
     <>
@@ -110,14 +112,27 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
 
           <button
             type="button"
-            className="cursor-pointer text-xs text-[#58657d] dark:text-[#94a3b8] hover:text-[#1768e5] dark:hover:text-[#60a5fa] mt-2"
+            className="cursor-pointer text-xs text-[#58657d] dark:text-[#94a3b8] hover:text-[#1768e5] dark:hover:text-[#60a5fa] mt-2 flex items-center space-x-1.5"
             onClick={() => {
               onGoToLanding();
               close();
             }}
           >
-            <FigmaIcon name="arrow" size={15} className="rotate-180" />
+            <FigmaIcon name="arrow" size={14} className="rotate-180" />
             <span>Product Showcase</span>
+          </button>
+
+          {/* Explicit Logout Nav Item */}
+          <button
+            type="button"
+            className="cursor-pointer text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 mt-1 flex items-center space-x-1.5 font-semibold"
+            onClick={() => {
+              onLogout();
+              close();
+            }}
+          >
+            <FigmaIcon name="logout" size={14} />
+            <span>Log Out</span>
           </button>
         </nav>
 
@@ -139,14 +154,18 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
           </a>
         </div>
 
-        {/* Shopkeeper User Info */}
-        <button className="side-user cursor-pointer" onClick={() => setPage('Settings')}>
+        {/* Shopkeeper User Info with Clear Logout Action */}
+        <button
+          className="side-user cursor-pointer group"
+          onClick={onLogout}
+          title="Click to Log Out of Store"
+        >
           <span>RS</span>
           <div>
             <b>Rajesh Sharma</b>
-            <small>Owner</small>
+            <small className="text-red-500 group-hover:underline">Click to Log out</small>
           </div>
-          <FigmaIcon name="logout" size={16} />
+          <FigmaIcon name="logout" size={16} className="text-red-500" />
         </button>
       </aside>
 
@@ -161,3 +180,4 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
     </>
   );
 };
+

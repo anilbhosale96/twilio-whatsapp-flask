@@ -104,3 +104,4 @@ export const FigmaTransactions: React.FC<FigmaTransactionsProps> = ({ transactio
     </div>
   );
 };
+

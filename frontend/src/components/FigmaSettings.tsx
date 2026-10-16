@@ -245,3 +245,4 @@ export const FigmaSettings: React.FC<FigmaSettingsProps> = ({
     </div>
   );
 };
+

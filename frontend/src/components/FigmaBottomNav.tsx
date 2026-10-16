@@ -56,3 +56,4 @@ export const FigmaBottomNav: React.FC<FigmaBottomNavProps> = ({ page, setPage, a
     </nav>
   );
 };
+

@@ -98,3 +98,4 @@ export const FigmaConfirmModal: React.FC<FigmaConfirmModalProps> = ({
     </div>
   );
 };
+
