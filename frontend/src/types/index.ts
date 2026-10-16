@@ -1,5 +1,6 @@
 export type ScreenType = 
-  | 'dashboard' 
+  | 'dashboard'
+  | 'tour'
   | 'inventory' 
   | 'transactions' 
   | 'alerts' 
@@ -128,3 +129,4 @@ export interface ChatMessage {
   }>;
   timestamp: string;
 }
+

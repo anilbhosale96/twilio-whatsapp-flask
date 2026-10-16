@@ -100,3 +100,4 @@ export const PrivacyAndTerms: React.FC<LegalDocProps> = ({ type }) => {
     </div>
   );
 };
+

@@ -4,9 +4,9 @@ import {
   Package,
   ListOrdered,
   AlertTriangle,
-  Menu,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { useLiveDashboard } from './hooks/useLiveDashboard';
 import type { ScreenType } from './types';
@@ -22,6 +22,7 @@ import { OnboardingView } from './components/OnboardingView';
 import { SettingsView } from './components/SettingsView';
 import { PrivacyAndTerms } from './components/PrivacyAndTerms';
 import { SimulateMessageModal } from './components/SimulateMessageModal';
+import { ProductOverview } from './components/ProductOverview';
 
 export const App: React.FC = () => {
   const {
@@ -42,37 +43,63 @@ export const App: React.FC = () => {
   } = useLiveDashboard();
 
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('dashboard');
-  const [isDark, setIsDark] = useState<boolean>(false);
-  const [isSimModalOpen, setIsSimModalOpen] = useState<boolean>(false);
 
-  // Apply dark mode class to html document
+  // Robust Dark Mode with localStorage persistence and system fallback
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('smartstock_theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDarkMode = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('smartstock_theme', next ? 'dark' : 'light');
+      } catch {}
+      return next;
+    });
+  };
+
   useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
     if (isDark) {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
+      body.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
+      body.classList.remove('dark');
     }
   }, [isDark]);
 
+  const [isSimModalOpen, setIsSimModalOpen] = useState<boolean>(false);
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B1220] text-[#0F172A] dark:text-[#F1F5F9] flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B1220] text-[#0F172A] dark:text-[#F1F5F9] flex flex-col transition-colors duration-200">
       {/* Top Navigation */}
       <Navbar
         status={status}
         shopName={settings?.name}
         phoneMasked={settings?.phone_masked}
         isDark={isDark}
-        onToggleDark={() => setIsDark(!isDark)}
+        currentScreen={currentScreen}
+        onSelectScreen={(screen) => setCurrentScreen(screen)}
+        onToggleDark={toggleDarkMode}
         onRefresh={refreshAll}
         onOpenSimModal={() => setIsSimModalOpen(true)}
       />
 
-      {/* Backend Offline Banner (Edge Case 3.6) */}
+      {/* Backend Offline Banner */}
       {status === 'offline' && (
         <div className="w-full bg-[#DC2626] text-white px-4 py-2.5 text-xs font-medium flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <AlertCircle size={15} strokeWidth={2} />
-            <span>Cannot reach the server. Local changes will sync when connected.</span>
+            <span>Cannot reach the backend server. Reconnecting automatically...</span>
           </div>
           <button
             onClick={refreshAll}
@@ -97,7 +124,15 @@ export const App: React.FC = () => {
 
         {/* Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden pb-20 lg:pb-8">
-          {/* Dashboard View */}
+          {/* Figma Product Tour / Overview View */}
+          {currentScreen === 'tour' && (
+            <ProductOverview
+              onGoToDashboard={() => setCurrentScreen('dashboard')}
+              onOpenSimulator={() => setIsSimModalOpen(true)}
+            />
+          )}
+
+          {/* Live Store Dashboard View */}
           {currentScreen === 'dashboard' && (
             <div className="space-y-6">
               <SummaryCards
@@ -106,7 +141,7 @@ export const App: React.FC = () => {
               />
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Live Chat Stream on Dashboard */}
+                {/* Live WhatsApp Messaging Stream */}
                 <div className="lg:col-span-5">
                   <LiveChatPreview
                     latestMessage={chatPreview.latest}
@@ -114,7 +149,7 @@ export const App: React.FC = () => {
                   />
                 </div>
 
-                {/* Inventory Quick View */}
+                {/* Stock Overview Table */}
                 <div className="lg:col-span-7">
                   <div className="p-5 rounded-xl border border-[#E2E8F0] dark:border-[#243041] bg-white dark:bg-[#111827] shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -123,7 +158,7 @@ export const App: React.FC = () => {
                           Current Stock Overview
                         </h2>
                         <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                          Showing items tracked in Sharma Kirana
+                          Showing items tracked in {settings?.name || "Sharma Kirana Store"}
                         </p>
                       </div>
                       <button
@@ -218,7 +253,7 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Onboarding / WhatsApp Connect View */}
+          {/* Onboarding View */}
           {currentScreen === 'onboarding' && (
             <div className="space-y-4">
               <div>
@@ -263,7 +298,7 @@ export const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar (TRD 4.5) */}
+      {/* Mobile Bottom Navigation Bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#111827] border-t border-[#E2E8F0] dark:border-[#243041] px-2 py-1 flex items-center justify-around text-xs">
         <button
           onClick={() => setCurrentScreen('dashboard')}
@@ -273,6 +308,15 @@ export const App: React.FC = () => {
         >
           <LayoutDashboard size={18} strokeWidth={1.5} />
           <span className="text-[10px] mt-0.5">Home</span>
+        </button>
+        <button
+          onClick={() => setCurrentScreen('tour')}
+          className={`flex flex-col items-center py-1 px-3 ${
+            currentScreen === 'tour' ? 'text-[#0F766E] dark:text-[#14B8A6] font-semibold' : 'text-[#64748B] dark:text-[#94A3B8]'
+          }`}
+        >
+          <Sparkles size={18} strokeWidth={1.5} />
+          <span className="text-[10px] mt-0.5">Tour</span>
         </button>
         <button
           onClick={() => setCurrentScreen('inventory')}
@@ -300,15 +344,6 @@ export const App: React.FC = () => {
         >
           <AlertTriangle size={18} strokeWidth={1.5} />
           <span className="text-[10px] mt-0.5">Alerts</span>
-        </button>
-        <button
-          onClick={() => setCurrentScreen('settings')}
-          className={`flex flex-col items-center py-1 px-3 ${
-            currentScreen === 'settings' ? 'text-[#0F766E] dark:text-[#14B8A6] font-semibold' : 'text-[#64748B] dark:text-[#94A3B8]'
-          }`}
-        >
-          <Menu size={18} strokeWidth={1.5} />
-          <span className="text-[10px] mt-0.5">More</span>
         </button>
       </nav>
 

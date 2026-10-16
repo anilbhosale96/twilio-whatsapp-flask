@@ -161,3 +161,4 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSaveSett
     </div>
   );
 };
+

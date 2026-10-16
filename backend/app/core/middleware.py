@@ -35,3 +35,4 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Too many requests. Please slow down."}
             )
         return await call_next(request)
+

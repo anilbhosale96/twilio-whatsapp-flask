@@ -8,7 +8,8 @@ import {
   QrCode,
   Settings,
   Shield,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import type { ScreenType } from '../types';
 
@@ -25,7 +26,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'dashboard' as ScreenType, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'inventory' as ScreenType, label: 'Inventory', icon: Package },
+    { id: 'tour' as ScreenType, label: 'Product Tour (Figma)', icon: Sparkles },
+    { id: 'inventory' as ScreenType, label: 'Inventory Ledger', icon: Package },
     { id: 'transactions' as ScreenType, label: 'Transactions', icon: ListOrdered },
     {
       id: 'alerts' as ScreenType,
@@ -34,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: alertsCount > 0 ? alertsCount : null,
       badgeColor: 'bg-[#DC2626] text-white'
     },
-    { id: 'reports' as ScreenType, label: 'Reports', icon: BarChart3 },
+    { id: 'reports' as ScreenType, label: 'Reports & Analytics', icon: BarChart3 },
     { id: 'onboarding' as ScreenType, label: 'WhatsApp Connect', icon: QrCode },
     { id: 'settings' as ScreenType, label: 'Settings', icon: Settings },
   ];
@@ -110,3 +112,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+

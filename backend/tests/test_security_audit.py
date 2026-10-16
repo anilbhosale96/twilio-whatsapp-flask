@@ -46,3 +46,4 @@ def test_rate_limiter_blocks_excessive_requests():
         assert limiter.is_allowed(client_id) is True
     # 6th request should be blocked
     assert limiter.is_allowed(client_id) is False
+

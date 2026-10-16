@@ -1,5 +1,9 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DEFAULT_DB_PATH = os.path.join(_BASE_DIR, "smart_stack_ai.db")
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -8,7 +12,7 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    DATABASE_URL: str = "sqlite:///./smart_stack_ai.db"
+    DATABASE_URL: str = f"sqlite:///{_DEFAULT_DB_PATH.replace(os.sep, '/')}"
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"

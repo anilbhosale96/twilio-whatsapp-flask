@@ -59,3 +59,4 @@ class RateLimiter:
         return True
 
 rate_limiter = RateLimiter(max_requests=settings.RATE_LIMIT_PER_MINUTE, window_seconds=60)
+

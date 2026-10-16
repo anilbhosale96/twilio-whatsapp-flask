@@ -142,3 +142,4 @@ export const OnboardingView: React.FC = () => {
     </div>
   );
 };
+
