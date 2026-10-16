@@ -5,14 +5,18 @@ from fastapi.testclient import TestClient
 from typing import Generator
 
 from app.core.database import Base, get_db
-from app.main import app
+from app.main import app as fastapi_app
+import app.models  # Registers Vendor, Item, Transaction with Base.metadata
 
-# In-memory SQLite engine for tests
+from sqlalchemy.pool import StaticPool
+
+# In-memory SQLite engine for tests with StaticPool so all connections share the memory DB
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
     TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -34,7 +38,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         finally:
             pass
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
+    fastapi_app.dependency_overrides[get_db] = override_get_db
+    with TestClient(fastapi_app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides.clear()
