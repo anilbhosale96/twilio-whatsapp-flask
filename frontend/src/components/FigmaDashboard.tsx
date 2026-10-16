@@ -1,16 +1,17 @@
 import React from 'react';
 import { FigmaIcon } from './FigmaIcon';
 import { FigmaQuickUpdate } from './FigmaQuickUpdate';
-import type { SummaryData, InventoryItem } from '../types';
+import type { SummaryData, InventoryItem, TransactionItem } from '../types';
 import type { FigmaPage } from './FigmaSidebar';
 
 interface FigmaDashboardProps {
   summary: SummaryData | null;
   inventory: InventoryItem[];
+  transactions?: TransactionItem[];
   shopName?: string | null;
   onGoToPage: (page: FigmaPage) => void;
   onSelectProduct: (item: InventoryItem) => void;
-  onConfirmUpdate: () => void;
+  onConfirmUpdate: (message?: string) => void;
   onSendMessage: (msg: string) => Promise<boolean>;
   latestMessageText?: string;
 }
@@ -18,6 +19,7 @@ interface FigmaDashboardProps {
 export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
   summary,
   inventory,
+  transactions,
   shopName,
   onGoToPage,
   onSelectProduct,
@@ -244,42 +246,62 @@ export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
             <span>TIME</span>
           </div>
 
-          {inventory.slice(0, 5).map((item, idx) => {
-            const initials = item.name
-              .split(' ')
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join('')
-              .toUpperCase();
-            const tone = idx % 2 === 0 ? 'amber' : 'blue';
-            const change = idx % 2 === 0 ? '+10' : '+20';
-            const source = idx === 1 ? 'Voice' : 'WhatsApp';
+          {transactions && transactions.length > 0 ? (
+            transactions.slice(0, 5).map((tx, idx) => {
+              const initials = tx.item_name
+                .split(' ')
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase();
+              const tone = idx % 2 === 0 ? 'amber' : 'blue';
+              const isPositive = tx.change > 0;
+              const isWhatsApp = !tx.raw_text.toLowerCase().includes('manual');
+              const matchedItem = inventory.find(
+                (i) => i.name.toLowerCase() === tx.item_name.toLowerCase()
+              );
 
-            return (
-              <div
-                key={item.id}
-                className="tr cursor-pointer hover:bg-[#f8fafc] dark:hover:bg-[#162032]"
-                onClick={() => onSelectProduct(item)}
-              >
-                <span className="product-cell">
-                  <i className={`product-avatar ${tone}`}>{initials}</i>
-                  <b>
-                    {item.name}
-                    <small>General Grocery</small>
-                  </b>
-                </span>
-                <span className="positive">{change} {item.unit}</span>
-                <span>
-                  <i className={`source-icon ${source === 'WhatsApp' ? 'wa' : ''}`}>
-                    <FigmaIcon name={source === 'WhatsApp' ? 'whatsapp' : 'mic'} size={14} />
-                  </i>
-                  {source}
-                </span>
-                <span>SmartStock AI</span>
-                <span>Just now</span>
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={tx.id}
+                  className="tr cursor-pointer hover:bg-[#f8fafc] dark:hover:bg-[#162032]"
+                  onClick={() => matchedItem && onSelectProduct(matchedItem)}
+                >
+                  <span className="product-cell">
+                    <i className={`product-avatar ${tone}`}>{initials}</i>
+                    <b>
+                      {tx.item_name}
+                      <small>
+                        {tx.raw_text.length > 32
+                          ? tx.raw_text.slice(0, 30) + '...'
+                          : tx.raw_text}
+                      </small>
+                    </b>
+                  </span>
+                  <span className={isPositive ? 'positive' : 'negative'}>
+                    {isPositive ? `+${tx.change}` : tx.change} {tx.unit}
+                  </span>
+                  <span>
+                    <i className={`source-icon ${isWhatsApp ? 'wa' : ''}`}>
+                      <FigmaIcon name={isWhatsApp ? 'whatsapp' : 'trend'} size={14} />
+                    </i>
+                    {isWhatsApp ? 'WhatsApp' : 'Manual'}
+                  </span>
+                  <span>SmartStock AI</span>
+                  <span>
+                    {new Date(tx.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 text-center text-xs text-[#58657d] dark:text-[#94a3b8]">
+              No updates recorded yet. Send a WhatsApp message or update items above.
+            </div>
+          )}
         </div>
       </section>
     </div>

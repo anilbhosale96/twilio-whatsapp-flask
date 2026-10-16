@@ -42,11 +42,22 @@ def test_dashboard_api_flow(client: TestClient, db_session: Session):
     res_search = client.get("/api/inventory", params={"vendor": vendor_phone, "search": "rice"})
     assert len(res_search.json()) == 1
 
-    # 3. Test Patch
-    item_id = items[0]["id"]
-    res_patch = client.patch(f"/api/inventory/{item_id}", json={"threshold": 12.0, "price": 55.0, "reordered": True})
+    # 3. Test Patch with qty, threshold, price, reordered
+    item_rice = next(it for it in items if it["name"] == "rice")
+    item_id = item_rice["id"]
+    res_patch = client.patch(f"/api/inventory/{item_id}", json={"qty": 25.0, "threshold": 12.0, "price": 55.0, "reordered": True})
     assert res_patch.status_code == 200
-    assert res_patch.json()["item"]["threshold"] == 12.0
+    patch_item = res_patch.json()["item"]
+    assert patch_item["qty"] == 25.0
+    assert patch_item["threshold"] == 12.0
+    assert patch_item["price"] == 55.0
+    assert patch_item["reordered"] is True
+
+    # Verify inventory returns updated qty
+    res_inv_updated = client.get("/api/inventory", params={"vendor": vendor_phone})
+    assert res_inv_updated.status_code == 200
+    updated_item = next(it for it in res_inv_updated.json() if it["id"] == item_id)
+    assert updated_item["qty"] == 25.0
 
     # 4. Test Alerts
     res_alerts = client.get("/api/alerts", params={"vendor": vendor_phone})

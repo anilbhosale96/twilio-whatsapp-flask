@@ -9,12 +9,14 @@ from app.core.time_utils import get_ist_now
 from app.core.middleware import SecurityHeadersMiddleware, RateLimitMiddleware
 from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
-import app.models  # Ensure all models are registered
+import asyncio
+from app.services.broadcaster import broadcaster
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize SQLite tables on startup
     Base.metadata.create_all(bind=engine)
+    broadcaster.set_loop(asyncio.get_running_loop())
     yield
 
 app = FastAPI(

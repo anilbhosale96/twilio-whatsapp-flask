@@ -219,3 +219,4 @@ export const FigmaAuth: React.FC<FigmaAuthProps> = ({
     </div>
   );
 };
+

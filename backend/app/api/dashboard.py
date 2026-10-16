@@ -1,5 +1,7 @@
 import csv
 import io
+import json
+import uuid
 import asyncio
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, time
@@ -31,6 +33,7 @@ def resolve_vendor(db: Session, vendor_param: Optional[str] = None) -> str:
 
 # --- Models ---
 class InventoryPatchRequest(BaseModel):
+    qty: Optional[float] = None
     threshold: Optional[float] = None
     price: Optional[float] = None
     reordered: Optional[bool] = None
@@ -163,6 +166,23 @@ def update_inventory_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    if patch.qty is not None:
+        diff = patch.qty - item.qty
+        item.qty = patch.qty
+        if diff != 0:
+            tx = Transaction(
+                batch_id=str(uuid.uuid4()),
+                vendor=item.vendor,
+                item_name=item.name,
+                unit=item.unit,
+                change=diff,
+                price=item.price or 0.0,
+                raw_text=f"Manual stock update: {'+' if diff > 0 else ''}{diff:g} {item.unit}",
+                created_at=get_ist_now(),
+                undone=False
+            )
+            db.add(tx)
+
     if patch.threshold is not None:
         item.threshold = patch.threshold
     if patch.price is not None:
@@ -181,6 +201,7 @@ def update_inventory_item(
         "item": {
             "id": item.id,
             "name": item.name,
+            "qty": item.qty,
             "threshold": item.threshold,
             "price": item.price,
             "reordered": item.reordered
@@ -489,7 +510,7 @@ async def event_stream():
                 try:
                     # Wait for next event or 15s keep-alive
                     payload = await asyncio.wait_for(q.get(), timeout=15.0)
-                    yield f"event: update\ndata: {payload}\n\n"
+                    yield f"event: update\ndata: {json.dumps(payload) if isinstance(payload, dict) else payload}\n\n"
                 except asyncio.TimeoutError:
                     # 15-second keep-alive ping per TRD
                     yield f": keep-alive ping {get_ist_now().isoformat()}\n\n"

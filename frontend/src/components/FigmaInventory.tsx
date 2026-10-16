@@ -11,10 +11,11 @@ interface FigmaInventoryProps {
 export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
   items,
   onSelectProduct,
-  onPatchItem: _onPatchItem
+  onPatchItem
 }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'low_high'>('recent');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const filtered = items.filter((item) => {
     return item.name.toLowerCase().includes(search.toLowerCase());
@@ -117,7 +118,38 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
                     <i className={`product-avatar ${avatarTone}`}>{initials}</i>
                     <b>{item.name}</b>
                   </span>
-                  <strong>{item.qty}</strong>
+                  <span
+                    className="flex items-center space-x-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      title="Decrease stock by 1"
+                      disabled={updatingId === item.id || item.qty <= 0}
+                      onClick={async () => {
+                        setUpdatingId(item.id);
+                        await onPatchItem(item.id, { qty: Math.max(0, item.qty - 1) });
+                        setUpdatingId(null);
+                      }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-xs bg-[#f1f5f9] dark:bg-[#1e293b] text-[#17213a] dark:text-[#f8fafc] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] cursor-pointer disabled:opacity-30"
+                    >
+                      −
+                    </button>
+                    <strong className="min-w-[28px] text-center">{item.qty}</strong>
+                    <button
+                      type="button"
+                      title="Increase stock by 1"
+                      disabled={updatingId === item.id}
+                      onClick={async () => {
+                        setUpdatingId(item.id);
+                        await onPatchItem(item.id, { qty: item.qty + 1 });
+                        setUpdatingId(null);
+                      }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-xs bg-[#f1f5f9] dark:bg-[#1e293b] text-[#17213a] dark:text-[#f8fafc] hover:bg-[#e2e8f0] dark:hover:bg-[#334155] cursor-pointer disabled:opacity-30"
+                    >
+                      +
+                    </button>
+                  </span>
                   <span>{item.unit}</span>
                   <span>{item.threshold} {item.unit}</span>
                   <span>
@@ -125,13 +157,13 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
                   </span>
                   <span>₹{(item.price || 10).toFixed(2)}</span>
                   <span className="text-xs text-[#58657d] dark:text-[#94a3b8]">Today</span>
-                  <span onClick={(e) => e.stopPropagation()}>
+                  <span onClick={(e) => e.stopPropagation()} className="flex items-center space-x-1.5">
                     <button
                       type="button"
                       onClick={() => onSelectProduct(item)}
-                      className="px-2 py-1 text-xs font-semibold rounded bg-[#eef5ff] dark:bg-[#172544] text-[#1768e5] dark:text-[#60a5fa] hover:opacity-90 cursor-pointer"
+                      className="px-2.5 py-1 text-xs font-semibold rounded bg-[#eef5ff] dark:bg-[#172544] text-[#1768e5] dark:text-[#60a5fa] hover:opacity-90 cursor-pointer"
                     >
-                      View
+                      View / Edit
                     </button>
                   </span>
                 </div>

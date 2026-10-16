@@ -115,7 +115,7 @@ export function useLiveDashboard() {
   }, [fetchSummary, fetchInventory, fetchTransactions, fetchAlerts, fetchReports, reportRange, fetchSettings, fetchChatPreview]);
 
   // Patch an inventory item
-  const patchItem = async (id: number, patch: { threshold?: number; price?: number; reordered?: boolean }) => {
+  const patchItem = async (id: number, patch: { qty?: number; threshold?: number; price?: number; reordered?: boolean }) => {
     try {
       const res = await fetch(`/api/inventory/${id}`, {
         method: 'PATCH',
@@ -123,7 +123,13 @@ export function useLiveDashboard() {
         body: JSON.stringify(patch)
       });
       if (res.ok) {
-        await Promise.all([fetchInventory(), fetchAlerts(), fetchSummary()]);
+        await Promise.all([
+          fetchInventory(),
+          fetchAlerts(),
+          fetchSummary(),
+          fetchTransactions(),
+          fetchReports(reportRange)
+        ]);
         return true;
       }
     } catch {}
@@ -139,7 +145,7 @@ export function useLiveDashboard() {
         body: JSON.stringify(data)
       });
       if (res.ok) {
-        await fetchSettings();
+        await Promise.all([fetchSettings(), fetchSummary()]);
         return true;
       }
     } catch {}
@@ -185,14 +191,20 @@ export function useLiveDashboard() {
         setError(null);
       };
 
-      es.addEventListener('update', () => {
+      const handleDataUpdate = () => {
         fetchSummary();
         fetchInventory();
         fetchTransactions();
         fetchAlerts();
         fetchReports(reportRange);
         fetchChatPreview();
-      });
+        fetchSettings();
+      };
+
+      es.onmessage = handleDataUpdate;
+      es.addEventListener('update', handleDataUpdate);
+      es.addEventListener('data_updated', handleDataUpdate);
+      es.addEventListener('settings_updated', handleDataUpdate);
 
       es.addEventListener('chat_preview', () => {
         fetchChatPreview();

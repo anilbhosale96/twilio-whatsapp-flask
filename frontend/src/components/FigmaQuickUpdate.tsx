@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FigmaIcon } from './FigmaIcon';
 
 interface FigmaQuickUpdateProps {
-  onConfirm: () => void;
+  onConfirm: (message?: string) => void;
   onSendMessage: (msg: string) => Promise<boolean>;
   latestMessageText?: string;
   latestMessageTime?: string;
@@ -27,6 +27,12 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
   const [activeMessage, setActiveMessage] = useState(
     latestMessageText || 'Bhai 20 Parle G aur 10 Tata Salt aaya.'
   );
+
+  React.useEffect(() => {
+    if (latestMessageText) {
+      setActiveMessage(latestMessageText);
+    }
+  }, [latestMessageText]);
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isSending) return;
@@ -132,7 +138,7 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
           <button
             type="button"
             className="btn btn-primary confirm-button cursor-pointer w-full"
-            onClick={onConfirm}
+            onClick={() => onConfirm(activeMessage)}
           >
             <FigmaIcon name="check" size={17} />
             <span>Confirm & Update Inventory</span>

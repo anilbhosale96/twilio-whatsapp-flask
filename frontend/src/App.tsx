@@ -96,10 +96,23 @@ export const App: React.FC = () => {
     showToast('Welcome back, Rajesh! Live dashboard ready.');
   };
 
+  const [activeUpdateMessage, setActiveUpdateMessage] = useState<string>(
+    'Added 20 Parle G and 10 Tata Salt'
+  );
+
+  const handleOpenConfirmModal = (msg?: string) => {
+    if (msg) setActiveUpdateMessage(msg);
+    setIsConfirmModalOpen(true);
+  };
+
   const handleConfirmUpdate = async () => {
     setIsConfirmModalOpen(false);
-    showToast('Stock updated successfully! Synced via SSE.');
-    await sendSimulationMessage('Added 20 Parle G and 10 Tata Salt');
+    const ok = await sendSimulationMessage(activeUpdateMessage);
+    if (ok) {
+      showToast('Stock updated successfully! Synced via SSE.');
+    } else {
+      showToast('Update failed. Please check connection.');
+    }
   };
 
   const handleSendMessage = async (msg: string): Promise<boolean> => {
@@ -109,6 +122,11 @@ export const App: React.FC = () => {
     }
     return ok;
   };
+
+  // Find active product from latest inventory data so updates reflect immediately
+  const activeProduct = selectedProduct
+    ? inventory.find((i) => i.id === selectedProduct.id) || selectedProduct
+    : null;
 
   // 1. Public Landing page view
   if (viewMode === 'landing') {
@@ -193,9 +211,9 @@ export const App: React.FC = () => {
 
         {/* Content Body */}
         <main className="pb-24 lg:pb-8">
-          {selectedProduct ? (
+          {activeProduct ? (
             <FigmaProductDetail
-              item={selectedProduct}
+              item={activeProduct}
               onBack={() => setSelectedProduct(null)}
               onPatchItem={patchItem}
             />
@@ -203,10 +221,11 @@ export const App: React.FC = () => {
             <FigmaDashboard
               summary={summary}
               inventory={inventory}
+              transactions={transactions}
               shopName={settings?.name}
               onGoToPage={(p) => setActivePage(p)}
               onSelectProduct={(item) => setSelectedProduct(item)}
-              onConfirmUpdate={() => setIsConfirmModalOpen(true)}
+              onConfirmUpdate={handleOpenConfirmModal}
               onSendMessage={handleSendMessage}
               latestMessageText={chatPreview.latest?.incoming_text}
             />
@@ -280,6 +299,7 @@ export const App: React.FC = () => {
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleConfirmUpdate}
+        productName={activeUpdateMessage}
       />
 
       {/* Toast Notification */}
