@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.time_utils import get_ist_now
 from app.api.webhook import router as webhook_router
+from app.api.dashboard import router as dashboard_router
 import app.models  # Ensure all models are registered
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(webhook_router)
+app.include_router(dashboard_router)
 
 @app.get("/health", tags=["System"])
 def health_check() -> dict:
