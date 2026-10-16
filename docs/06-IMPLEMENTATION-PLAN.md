@@ -75,3 +75,4 @@ The plan assumes a 24-hour hackathon. Scale the hours proportionally for a longe
 
 ## Rules for the AI
 "Do not move to the next phase until the current phase is complete and tested. After each phase, review the code and fix errors. Make only the changes requested for the current phase."
+

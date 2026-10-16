@@ -259,3 +259,4 @@ def test_word_number_don_doli():
     assert res.actions[0].action == "SELL"
     assert res.actions[0].quantity == 1.0
     assert res.actions[0].item_name == "bread"
+

@@ -14,3 +14,4 @@ class Vendor(Base):
 
     items = relationship("Item", back_populates="vendor_rel", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="vendor_rel", cascade="all, delete-orphan")
+

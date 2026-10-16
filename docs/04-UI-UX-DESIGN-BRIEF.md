@@ -48,3 +48,4 @@ Clean, trustworthy and calm. Modern SaaS website look for non-technical owners: 
 - Loading skeleton, empty, no results, error (backend offline), new-data highlight.
 - WCAG AA contrast, visible focus rings, status never by color alone, 44px touch targets.
 - Formats: Currency as `Rs.` with Indian grouping (`Rs. 1,24,500`); dates as `DD MMM`; time in 12-hour IST.
+

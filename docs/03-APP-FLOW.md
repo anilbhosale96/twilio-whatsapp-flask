@@ -48,3 +48,4 @@
 
 ## 3.7 Permissions
 WhatsApp message and phone number received through Twilio only after shopkeeper joins. Consent line in welcome message. No device permissions needed on dashboard.
+

@@ -79,3 +79,4 @@ Phase 2: dashboard accounts linked to vendor, admin role for support. Secrets in
 | `undo` | Reverses the last message |
 | `alert rice 3` | Sets alert level for rice |
 | `help` | Shows examples |
+

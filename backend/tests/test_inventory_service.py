@@ -106,3 +106,4 @@ def test_alert_command_and_help(db_session: Session):
     # Help
     help_reply = process_incoming_message(db_session, vendor, "help")
     assert "Smart Stack AI Commands & Help" in help_reply
+

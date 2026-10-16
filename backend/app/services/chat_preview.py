@@ -47,3 +47,4 @@ class ChatPreviewManager:
         return self.history
 
 chat_preview_manager = ChatPreviewManager()
+

@@ -47,3 +47,4 @@ Smart Stack AI is an inventory management website with WhatsApp / SMS input for 
 - Phase 7: Connect UI to backend (SSE hook, real-time sync, CSV export)
 - Phase 8: Voice notes & LLM fallback (Whisper STT, Claude/Ollama fallback)
 - Phase 9: Polish, testing and demo prep
+

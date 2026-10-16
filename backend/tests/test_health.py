@@ -7,3 +7,4 @@ def test_health_check(client: TestClient):
     assert data["status"] == "healthy"
     assert data["app"] == "Smart Stack AI"
     assert "timestamp" in data
+

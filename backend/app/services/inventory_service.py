@@ -285,3 +285,4 @@ def process_incoming_message(db: Session, vendor_phone: str, raw_text: str) -> s
         "Sorry, I couldn't understand that message.\n\n"
         + handle_help()
     )
+

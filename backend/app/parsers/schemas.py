@@ -20,3 +20,4 @@ class ParseResult(BaseModel):
     actions: List[ParsedAction] = Field(default_factory=list)
     raw_text: str = ""
     error: Optional[str] = None
+

@@ -44,3 +44,4 @@ Smart Stack AI will not be a billing or POS system (no invoices, GST filing or b
 
 ## 1.8 Monetization Plan
 Freemium: basic stock tracking is free; a paid tier adds reports, multiple staff numbers, supplier ordering and analytics. Later options: supplier and distributor partnerships for reorder requests, and aggregated, anonymised demand insights with user consent.
+

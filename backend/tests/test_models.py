@@ -57,3 +57,4 @@ def test_create_vendor_and_items(db_session: Session):
     assert saved_tx is not None
     assert saved_tx.change == 50.0
     assert saved_tx.undone is False
+

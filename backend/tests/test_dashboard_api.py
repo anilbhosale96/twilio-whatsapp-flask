@@ -84,3 +84,4 @@ def test_dashboard_api_flow(client: TestClient, db_session: Session):
     res_preview = client.get("/api/chat-preview")
     assert res_preview.status_code == 200
     assert "history" in res_preview.json()
+

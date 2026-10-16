@@ -27,3 +27,4 @@ def format_inr(amount: float) -> str:
 
     res = f"Rs. {grouped}{dec_part}"
     return f"-{res}" if is_negative else res
+

@@ -30,3 +30,4 @@ def test_webhook_command_help(client: TestClient):
     response = client.post("/webhook", data={"From": "whatsapp:+919876543210", "Body": "help"})
     assert response.status_code == 200
     assert "Smart Stack AI Commands &amp; Help" in response.text or "Smart Stack AI Commands & Help" in response.text
+

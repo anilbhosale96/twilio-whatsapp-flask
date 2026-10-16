@@ -20,3 +20,4 @@ class Item(Base):
     updated_at = Column(DateTime(timezone=True), default=get_ist_now, onupdate=get_ist_now, nullable=False)
 
     vendor_rel = relationship("Vendor", back_populates="items")
+

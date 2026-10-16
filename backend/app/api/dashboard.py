@@ -17,6 +17,7 @@ from app.models.item import Item
 from app.models.transaction import Transaction
 from app.services.chat_preview import mask_phone_number, chat_preview_manager
 from app.services.broadcaster import broadcaster
+from app.core.security import sanitize_input
 
 router = APIRouter(prefix="/api", tags=["Dashboard API"])
 
@@ -447,11 +448,11 @@ def update_settings(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     if settings_in.name is not None:
-        vendor_obj.name = settings_in.name.strip()
+        vendor_obj.name = sanitize_input(settings_in.name.strip())
     if settings_in.default_threshold is not None:
-        vendor_obj.default_threshold = settings_in.default_threshold
+        vendor_obj.default_threshold = max(0.0, float(settings_in.default_threshold))
     if settings_in.language is not None:
-        vendor_obj.language = settings_in.language.strip()
+        vendor_obj.language = sanitize_input(settings_in.language.strip())
 
     db.commit()
     db.refresh(vendor_obj)

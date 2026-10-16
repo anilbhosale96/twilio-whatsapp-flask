@@ -18,3 +18,4 @@ class Transaction(Base):
     undone = Column(Boolean, default=False, nullable=False)
 
     vendor_rel = relationship("Vendor", back_populates="transactions")
+

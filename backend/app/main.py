@@ -6,6 +6,7 @@ from typing import AsyncGenerator
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.time_utils import get_ist_now
+from app.core.middleware import SecurityHeadersMiddleware, RateLimitMiddleware
 from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
 import app.models  # Ensure all models are registered
@@ -20,18 +21,26 @@ app = FastAPI(
     title="Smart Stack AI API",
     description="Inventory Management API with WhatsApp / SMS parsing for local shopkeepers",
     version="1.0.0",
+    debug=False,  # Debug mode disabled in production
     lifespan=lifespan
 )
 
-# CORS setup
+# 1. Security Headers Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Rate Limiting Middleware
+app.add_middleware(RateLimitMiddleware)
+
+# 3. Explicit CORS whitelist (no wildcards)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-KEY"],
 )
 
+# 4. Routers
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
 
