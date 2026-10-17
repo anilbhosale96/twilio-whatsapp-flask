@@ -24,11 +24,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Exclude static/health check from tight rate limits
-        if request.url.path in {"/health", "/docs", "/openapi.json"}:
+        # Exclude SSE stream, webhook endpoints, and documentation from rate limiting
+        exempt_paths = {
+            "/health", "/docs", "/openapi.json",
+            "/api/stream", "/api/webhook", "/webhook", "/whatsapp", "/api/webhook/whatsapp"
+        }
+        if request.url.path in exempt_paths:
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
+        # In local development, bypass rate limits for instant dashboard reactivity
+        if client_ip in {"127.0.0.1", "localhost", "::1"}:
+            return await call_next(request)
+
         if not rate_limiter.is_allowed(client_ip):
             return JSONResponse(
                 status_code=429,

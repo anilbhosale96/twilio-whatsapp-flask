@@ -470,10 +470,10 @@ def get_reports(
     total_stock_out = sum(abs(tx.change) for tx in sales_txs)
     total_revenue = sum(abs(tx.change) * (tx.price or 0.0) for tx in sales_txs)
 
-    # Generate daily movement buckets
+    # Generate daily movement buckets (ordered newest day first)
     num_days = 7 if range_param == "7d" else (30 if range_param == "30d" else 1)
     daily_movement = []
-    for day_offset in range(num_days - 1, -1, -1):
+    for day_offset in range(0, num_days):
         day_date = (now_ist - timedelta(days=day_offset)).date()
         day_start = datetime.combine(day_date, time.min).replace(tzinfo=IST)
         day_end = datetime.combine(day_date, time.max).replace(tzinfo=IST)
@@ -484,12 +484,21 @@ def get_reports(
         ]
         day_in = sum(tx.change for tx in day_txs if tx.change > 0)
         day_out = sum(abs(tx.change) for tx in day_txs if tx.change < 0)
+        day_sales = [tx for tx in day_txs if tx.change < 0]
+        day_rev = sum(abs(tx.change) * (tx.price or 0.0) for tx in day_sales)
+
+        day_title = "Today" if day_offset == 0 else ("Yesterday" if day_offset == 1 else day_date.strftime("%A"))
+
         daily_movement.append({
             "date": day_date.isoformat(),
+            "formatted_date": day_date.strftime("%d %b %Y"),
+            "display_title": f"{day_title}, {day_date.strftime('%d %b %Y')}",
             "day_label": day_date.strftime("%a"),
             "stock_in": day_in,
             "stock_out": day_out,
-            "total_moved": day_in + day_out
+            "total_moved": day_in + day_out,
+            "revenue": day_rev,
+            "revenue_formatted": format_inr(day_rev)
         })
 
     # Sales items breakdown
@@ -512,9 +521,17 @@ def get_reports(
     top_items = sorted_items[:5]
     slowest_items = sorted_items[-5:] if len(sorted_items) > 5 else []
 
+    date_range_label = (
+        f"{start_date.strftime('%d %b %Y')} — {now_ist.strftime('%d %b %Y')}"
+        if range_param != "today"
+        else now_ist.strftime("%A, %d %B %Y")
+    )
+
     return {
         "range": range_param,
         "start_date": start_date.isoformat(),
+        "end_date": now_ist.isoformat(),
+        "date_range_label": date_range_label,
         "total_revenue": total_revenue,
         "total_revenue_formatted": format_inr(total_revenue),
         "total_units_sold": total_stock_out,

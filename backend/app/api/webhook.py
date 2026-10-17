@@ -34,8 +34,11 @@ async def twilio_webhook(
     MediaContentType0: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    sender = From.strip()
-    if not sender:
+    raw_from = From.strip()
+    if raw_from:
+        from app.core.auth_security import normalize_phone
+        sender = normalize_phone(raw_from)
+    else:
         sender = "whatsapp:+919876543210"
 
     incoming_text = Body.strip()
@@ -74,9 +77,12 @@ async def twilio_webhook(
         parsed_items=parsed_items
     )
 
-    # Broadcast chat preview update
+    # Broadcast updates
     broadcaster.notify_sync("chat_preview", {
-        "latest": chat_preview_manager.get_latest()
+        "latest": chat_preview_manager.get_latest(phone=sender)
+    })
+    broadcaster.notify_sync("data_updated", {
+        "vendor": sender
     })
 
     twiml = build_twiml_response(reply)

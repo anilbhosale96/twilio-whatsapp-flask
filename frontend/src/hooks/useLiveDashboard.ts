@@ -51,36 +51,50 @@ export function useLiveDashboard() {
 
   const getAuthHeaders = useCallback((extra: Record<string, string> = {}): Record<string, string> => {
     const token = authToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('smartstock_token') : null);
-    return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      ...extra
+    };
   }, [authToken]);
 
   const fetchSummary = useCallback(async () => {
     try {
-      const res = await fetch('/api/summary', { headers: getAuthHeaders() });
+      const res = await fetch(`/api/summary?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setSummary(await res.json());
     } catch {}
   }, [getAuthHeaders]);
 
   const fetchInventory = useCallback(async (search?: string, lowOnly?: boolean) => {
     try {
-      let url = '/api/inventory';
+      let url = `/api/inventory?_t=${Date.now()}`;
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (lowOnly) params.append('low_only', 'true');
-      if (params.toString()) url += `?${params.toString()}`;
+      if (params.toString()) url += `&${params.toString()}`;
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setInventory(await res.json());
     } catch {}
   }, [getAuthHeaders]);
 
   const fetchTransactions = useCallback(async (type?: string, search?: string) => {
     try {
-      let url = '/api/transactions?limit=100';
+      let url = `/api/transactions?limit=100&_t=${Date.now()}`;
       if (type && type !== 'all') url += `&type=${type}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.items || []);
@@ -90,28 +104,40 @@ export function useLiveDashboard() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const res = await fetch('/api/alerts', { headers: getAuthHeaders() });
+      const res = await fetch(`/api/alerts?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setAlerts(await res.json());
     } catch {}
   }, [getAuthHeaders]);
 
   const fetchReports = useCallback(async (range: string = 'today') => {
     try {
-      const res = await fetch(`/api/reports?range=${range}`, { headers: getAuthHeaders() });
+      const res = await fetch(`/api/reports?range=${range}&_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setReports(await res.json());
     } catch {}
   }, [getAuthHeaders]);
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings', { headers: getAuthHeaders() });
+      const res = await fetch(`/api/settings?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setSettings(await res.json());
     } catch {}
   }, [getAuthHeaders]);
 
   const fetchChatPreview = useCallback(async () => {
     try {
-      const res = await fetch('/api/chat-preview', { headers: getAuthHeaders() });
+      const res = await fetch(`/api/chat-preview?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) setChatPreview(await res.json());
     } catch {}
   }, [getAuthHeaders]);
@@ -340,11 +366,16 @@ export function useLiveDashboard() {
   const sendSimulationMessage = async (text: string) => {
     try {
       const formData = new URLSearchParams();
-      formData.append('From', currentUser?.phone || settings?.phone_raw || 'whatsapp:+919876543210');
+      let phoneToSend = currentUser?.phone || settings?.phone_raw || 'whatsapp:+919876543210';
+      if (!phoneToSend.startsWith('whatsapp:')) {
+        const digits = phoneToSend.replace(/\D/g, '');
+        phoneToSend = `whatsapp:+${digits.length === 10 ? '91' + digits : digits}`;
+      }
+      formData.append('From', phoneToSend);
       formData.append('Body', text);
       formData.append('NumMedia', '0');
 
-      const res = await fetch('/webhook', {
+      const res = await fetch('/api/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()

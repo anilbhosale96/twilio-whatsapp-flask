@@ -96,14 +96,20 @@ export interface ReportItem {
 export interface DailyMovementItem {
   date: string;
   day_label: string;
+  formatted_date?: string;
+  display_title?: string;
   stock_in: number;
   stock_out: number;
   total_moved: number;
+  revenue?: number;
+  revenue_formatted?: string;
 }
 
 export interface ReportsData {
   range: string;
   start_date: string;
+  end_date?: string;
+  date_range_label?: string;
   total_revenue: number;
   total_revenue_formatted: string;
   total_units_sold: number;

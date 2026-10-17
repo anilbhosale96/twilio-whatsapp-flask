@@ -15,10 +15,12 @@ from app.core.formatters import format_inr
 from app.services.broadcaster import broadcaster
 
 def get_or_create_vendor(db: Session, phone: str) -> Vendor:
-    vendor = db.query(Vendor).filter_by(phone=phone).first()
+    from app.core.auth_security import normalize_phone
+    norm_phone = normalize_phone(phone) if phone else "whatsapp:+919876543210"
+    vendor = db.query(Vendor).filter_by(phone=norm_phone).first()
     if not vendor:
         vendor = Vendor(
-            phone=phone,
+            phone=norm_phone,
             name=None,
             default_threshold=settings.DEFAULT_THRESHOLD,
             language=settings.DEFAULT_LANGUAGE
