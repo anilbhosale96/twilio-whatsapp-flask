@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FigmaIcon } from './FigmaIcon';
+import type { InventoryItem } from '../types';
+import { parseInventoryMessage } from '../utils/messageParser';
 
 interface FigmaQuickUpdateProps {
+  inventory?: InventoryItem[];
   onConfirm: (message?: string) => void;
   onSendMessage: (msg: string) => Promise<boolean>;
   latestMessageText?: string;
@@ -16,6 +19,7 @@ const PRESET_MESSAGES = [
 ];
 
 export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
+  inventory = [],
   onConfirm,
   onSendMessage,
   latestMessageText,
@@ -33,6 +37,20 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
       setActiveMessage(latestMessageText);
     }
   }, [latestMessageText]);
+
+  // Dynamically parse the active message against current shop inventory
+  const { items: parsedItems } = useMemo(() => {
+    return parseInventoryMessage(activeMessage, inventory);
+  }, [activeMessage, inventory]);
+
+  const actionLabel = useMemo(() => {
+    if (parsedItems.length === 0) return 'Inventory Update';
+    const allAdd = parsedItems.every((i) => i.action === 'ADD');
+    const allSell = parsedItems.every((i) => i.action === 'SELL');
+    if (allAdd) return 'Stock In';
+    if (allSell) return 'Stock Out';
+    return 'Inventory Update';
+  }, [parsedItems]);
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isSending) return;
@@ -98,7 +116,9 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
             </span>
             <div>
               <b>AI understood your message</b>
-              <small>2 products · Stock In</small>
+              <small>
+                {parsedItems.length} product{parsedItems.length !== 1 ? 's' : ''} · {actionLabel}
+              </small>
             </div>
             <FigmaIcon name="check" size={17} className="text-emerald-500" />
           </div>
@@ -113,27 +133,26 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
             </span>
           </div>
 
-          <div className="identified-product">
-            <span className="product-avatar amber">PG</span>
-            <div>
-              <b>Parle G 100g</b>
-              <small>Current: 22 packets</small>
+          {parsedItems.length > 0 ? (
+            parsedItems.map((item, idx) => (
+              <div key={`${item.name}-${idx}`} className="identified-product">
+                <span className={`product-avatar ${item.avatarColor}`}>{item.initials}</span>
+                <div>
+                  <b>{item.name}</b>
+                  <small>
+                    Current: {item.currentStock} {item.unit}
+                  </small>
+                </div>
+                <strong className={item.action === 'ADD' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}>
+                  {item.action === 'ADD' ? '+' : '−'}{item.qty} <small>{item.unit}</small>
+                </strong>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-xs text-[#58657d] dark:text-[#94a3b8] bg-[#f8fafc] dark:bg-[#162032] rounded-xl border border-dashed border-[#e5eaf2] dark:border-[#334155]">
+              Type an inventory update or pick a preset below.
             </div>
-            <strong>
-              +20 <small>packets</small>
-            </strong>
-          </div>
-
-          <div className="identified-product">
-            <span className="product-avatar blue">TS</span>
-            <div>
-              <b>Tata Salt 1kg</b>
-              <small>Current: 8 packets</small>
-            </div>
-            <strong>
-              +10 <small>packets</small>
-            </strong>
-          </div>
+          )}
 
           <button
             type="button"
@@ -195,7 +214,10 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
             <button
               key={msg}
               type="button"
-              onClick={() => handleSend(msg)}
+              onClick={() => {
+                setActiveMessage(msg);
+                handleSend(msg);
+              }}
               className="text-[11px] px-2 py-0.5 rounded-md border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc] hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
             >
               "{msg}"
@@ -206,4 +228,3 @@ export const FigmaQuickUpdate: React.FC<FigmaQuickUpdateProps> = ({
     </section>
   );
 };
-

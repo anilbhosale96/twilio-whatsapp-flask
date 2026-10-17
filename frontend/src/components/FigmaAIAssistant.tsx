@@ -5,6 +5,7 @@ import type { InventoryItem } from '../types';
 interface FigmaAIAssistantProps {
   inventory: InventoryItem[];
   shopName?: string | null;
+  ownerName?: string | null;
 }
 
 interface Message {
@@ -14,11 +15,12 @@ interface Message {
 
 export const FigmaAIAssistant: React.FC<FigmaAIAssistantProps> = ({
   inventory,
-  shopName
+  shopName,
+  ownerName
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
-      text: `Namaste Rajesh! I’m your SmartStock assistant for ${shopName || "Sharma General Store"}. Ask me anything about your stock. I will only answer using your live shop data.`
+      text: `Namaste ${ownerName || "Shopkeeper"}! I’m your SmartStock assistant for ${shopName || "your shop"}. Ask me anything about your stock. I will only answer using your live shop data.`
     },
     {
       mine: true,

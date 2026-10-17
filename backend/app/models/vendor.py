@@ -8,6 +8,9 @@ class Vendor(Base):
 
     phone = Column(String(32), primary_key=True, index=True)
     name = Column(String(100), nullable=True)
+    shop_name = Column(String(100), nullable=True)
+    category = Column(String(50), default="Grocery", nullable=False)
+    password_hash = Column(String(255), nullable=True)
     default_threshold = Column(Float, default=5.0, nullable=False)
     language = Column(String(10), default="en", nullable=False)
     created_at = Column(DateTime(timezone=True), default=get_ist_now, nullable=False)

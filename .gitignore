@@ -46,3 +46,7 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 
+# Scratch / Experiments
+flask-project/
+app.py
+

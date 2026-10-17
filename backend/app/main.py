@@ -9,13 +9,32 @@ from app.core.time_utils import get_ist_now
 from app.core.middleware import SecurityHeadersMiddleware, RateLimitMiddleware
 from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
+from app.api.auth import router as auth_router
 import asyncio
 from app.services.broadcaster import broadcaster
+from sqlalchemy import text
+
+def ensure_db_migrations():
+    """Ensures newly added columns exist in existing SQLite databases."""
+    try:
+        with engine.connect() as conn:
+            res = conn.execute(text("PRAGMA table_info(vendors)")).fetchall()
+            col_names = [r[1] for r in res]
+            if "password_hash" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN password_hash VARCHAR(255)"))
+            if "shop_name" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN shop_name VARCHAR(100)"))
+            if "category" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN category VARCHAR(50) DEFAULT 'Grocery'"))
+            conn.commit()
+    except Exception:
+        pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize SQLite tables on startup
     Base.metadata.create_all(bind=engine)
+    ensure_db_migrations()
     broadcaster.set_loop(asyncio.get_running_loop())
     yield
 
@@ -43,6 +62,7 @@ app.add_middleware(
 )
 
 # 4. Routers
+app.include_router(auth_router)
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
 

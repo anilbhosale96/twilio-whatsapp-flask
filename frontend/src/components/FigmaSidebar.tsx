@@ -21,6 +21,7 @@ interface FigmaSidebarProps {
   close: () => void;
   alertsCount: number;
   shopName?: string | null;
+  ownerName?: string | null;
   onGoToLanding: () => void;
   onLogout: () => void;
 }
@@ -49,6 +50,7 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
   close,
   alertsCount,
   shopName,
+  ownerName,
   onGoToLanding,
   onLogout
 }) => {
@@ -155,18 +157,29 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
         </div>
 
         {/* Shopkeeper User Info with Clear Logout Action */}
-        <button
-          className="side-user cursor-pointer group"
-          onClick={onLogout}
-          title="Click to Log Out of Store"
-        >
-          <span>RS</span>
-          <div>
-            <b>Rajesh Sharma</b>
-            <small className="text-red-500 group-hover:underline">Click to Log out</small>
-          </div>
-          <FigmaIcon name="logout" size={16} className="text-red-500" />
-        </button>
+        {(() => {
+          const displayName = ownerName || shopName || "Shop Owner";
+          const initials = displayName
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w: string) => w[0].toUpperCase())
+            .join('') || 'SO';
+          return (
+            <button
+              className="side-user cursor-pointer group"
+              onClick={onLogout}
+              title="Click to Log Out of Store"
+            >
+              <span>{initials}</span>
+              <div>
+                <b>{displayName}</b>
+                <small className="text-red-500 group-hover:underline">Click to Log out</small>
+              </div>
+              <FigmaIcon name="logout" size={16} className="text-red-500" />
+            </button>
+          );
+        })()}
       </aside>
 
       {/* Mobile Backdrop Overlay */}

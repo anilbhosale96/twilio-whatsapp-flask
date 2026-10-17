@@ -14,7 +14,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-from app.core.database import SessionLocal, Base, engine
+from app.core.database import SessionLocal, Base, engine, ensure_migrations
 from app.core.time_utils import get_ist_now
 from app.models.vendor import Vendor
 from app.models.item import Item
@@ -24,6 +24,7 @@ from app.services.chat_preview import chat_preview_manager
 def seed_database():
     print("🚀 Initializing database schema...")
     Base.metadata.create_all(bind=engine)
+    ensure_migrations()
     db = SessionLocal()
 
     try:
@@ -35,11 +36,16 @@ def seed_database():
         db.query(Vendor).filter_by(phone=demo_phone).delete()
         db.commit()
 
+        from app.core.auth_security import hash_password
+
         # 2. Create Vendor
         print("👤 Creating demo vendor: Sharma Kirana Store...")
         vendor = Vendor(
             phone=demo_phone,
-            name="Sharma Kirana & General Store",
+            name="Rajesh Sharma",
+            shop_name="Sharma Kirana & General Store",
+            category="Grocery",
+            password_hash=hash_password("password123"),
             default_threshold=5.0,
             language="en",
             created_at=get_ist_now() - timedelta(days=45)

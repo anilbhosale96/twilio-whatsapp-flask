@@ -87,11 +87,43 @@ def test_dashboard_api_flow(client: TestClient, db_session: Session):
     assert res_get_settings.status_code == 200
     assert res_get_settings.json()["name"] == "Test Kirana"
 
-    res_put_settings = client.put("/api/settings", params={"vendor": vendor_phone}, json={"name": "New Kirana Name"})
+    res_put_settings = client.put(
+        "/api/settings",
+        params={"vendor": vendor_phone},
+        json={"name": "Owner Amit", "shop_name": "New Kirana Store"}
+    )
     assert res_put_settings.status_code == 200
-    assert res_put_settings.json()["settings"]["name"] == "New Kirana Name"
+    assert res_put_settings.json()["settings"]["name"] == "Owner Amit"
+    assert res_put_settings.json()["settings"]["shop_name"] == "New Kirana Store"
 
-    # 9. Test Chat Preview
+    # 9. Test Add Item (POST /api/inventory)
+    res_add_item = client.post(
+        "/api/inventory",
+        params={"vendor": vendor_phone},
+        json={"name": "Atta", "unit": "kg", "qty": 40.0, "threshold": 10.0, "price": 42.0}
+    )
+    assert res_add_item.status_code == 200
+    added_id = res_add_item.json()["item"]["id"]
+    assert res_add_item.json()["item"]["name"] == "atta"
+
+    # Test Edit Item Name/Unit
+    res_edit_name = client.patch(
+        f"/api/inventory/{added_id}",
+        params={"vendor": vendor_phone},
+        json={"name": "Chakki Atta", "unit": "packet"}
+    )
+    assert res_edit_name.status_code == 200
+    assert res_edit_name.json()["item"]["name"] == "chakki atta"
+    assert res_edit_name.json()["item"]["unit"] == "packet"
+
+    # Test Delete Item (DELETE /api/inventory/{id})
+    res_del_item = client.delete(
+        f"/api/inventory/{added_id}",
+        params={"vendor": vendor_phone}
+    )
+    assert res_del_item.status_code == 200
+
+    # 10. Test Chat Preview
     res_preview = client.get("/api/chat-preview")
     assert res_preview.status_code == 200
     assert "history" in res_preview.json()

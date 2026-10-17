@@ -33,13 +33,26 @@ export const App: React.FC = () => {
     setReportRange,
     settings,
     chatPreview,
+    currentUser,
+    isLoggedIn,
+    login,
+    register,
+    logout,
+    addItem,
+    deleteItem,
     patchItem,
     updateVendorSettings,
     sendSimulationMessage
   } = useLiveDashboard();
 
   // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
-  const [viewMode, setViewMode] = useState<'app' | 'landing' | 'auth'>('app');
+  const [viewMode, setViewMode] = useState<'app' | 'landing' | 'auth'>(() => {
+    try {
+      return localStorage.getItem('smartstock_token') ? 'app' : 'auth';
+    } catch {
+      return 'auth';
+    }
+  });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [activePage, setActivePage] = useState<FigmaPage>('Dashboard');
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
@@ -86,6 +99,7 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    logout();
     setViewMode('auth');
     setAuthMode('login');
     showToast('You have been logged out.');
@@ -93,7 +107,7 @@ export const App: React.FC = () => {
 
   const handleLoginSuccess = () => {
     setViewMode('app');
-    showToast('Welcome back, Rajesh! Live dashboard ready.');
+    showToast('Welcome to your shop dashboard!');
   };
 
   const [activeUpdateMessage, setActiveUpdateMessage] = useState<string>(
@@ -132,7 +146,7 @@ export const App: React.FC = () => {
   if (viewMode === 'landing') {
     return (
       <FigmaLanding
-        onOpenApp={() => setViewMode('app')}
+        onOpenApp={() => setViewMode(isLoggedIn ? 'app' : 'auth')}
         onOpenLogin={() => {
           setAuthMode('login');
           setViewMode('auth');
@@ -161,6 +175,8 @@ export const App: React.FC = () => {
       <FigmaAuth
         mode={authMode}
         setMode={(m) => setAuthMode(m)}
+        onLogin={login}
+        onRegister={register}
         onDone={handleLoginSuccess}
         onBack={() => setViewMode('landing')}
         isDark={isDark}
@@ -182,7 +198,8 @@ export const App: React.FC = () => {
         open={isMobileMenuOpen}
         close={() => setIsMobileMenuOpen(false)}
         alertsCount={alerts?.count || summary?.alerts_count || 0}
-        shopName={settings?.name}
+        shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
+        ownerName={currentUser?.name || settings?.name}
         onGoToLanding={() => setViewMode('landing')}
         onLogout={handleLogout}
       />
@@ -201,7 +218,8 @@ export const App: React.FC = () => {
           onToggleDark={toggleDarkMode}
           status={status}
           alertsCount={alerts?.count || summary?.alerts_count || 0}
-          shopName={settings?.name}
+          shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
+          ownerName={currentUser?.name || settings?.name}
           onAlertsClick={() => {
             setActivePage('Alerts');
             setSelectedProduct(null);
@@ -222,7 +240,8 @@ export const App: React.FC = () => {
               summary={summary}
               inventory={inventory}
               transactions={transactions}
-              shopName={settings?.name}
+              shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
+              ownerName={currentUser?.name || settings?.name}
               onGoToPage={(p) => setActivePage(p)}
               onSelectProduct={(item) => setSelectedProduct(item)}
               onConfirmUpdate={handleOpenConfirmModal}
@@ -233,7 +252,33 @@ export const App: React.FC = () => {
             <FigmaInventory
               items={inventory}
               onSelectProduct={(item) => setSelectedProduct(item)}
-              onPatchItem={patchItem}
+              onPatchItem={async (id, data) => {
+                const ok = await patchItem(id, data);
+                if (ok) {
+                  if (data.qty !== undefined && Object.keys(data).length === 1) {
+                    showToast(`Stock updated to ${data.qty}`);
+                  } else {
+                    showToast('Product details updated successfully!');
+                  }
+                } else {
+                  showToast('Failed to update product.');
+                }
+                return ok;
+              }}
+              onAddItem={async (data) => {
+                const res = await addItem(data);
+                if (res.success) {
+                  showToast(`Product "${data.name}" added successfully!`);
+                } else {
+                  showToast(res.message || 'Failed to add product.');
+                }
+                return res;
+              }}
+              onDeleteItem={async (id) => {
+                const ok = await deleteItem(id);
+                if (ok) showToast('Product deleted from inventory.');
+                return ok;
+              }}
             />
           ) : activePage === 'WhatsApp Activity' ? (
             <FigmaWhatsAppActivity transactions={transactions} />
@@ -257,7 +302,11 @@ export const App: React.FC = () => {
               onSelectRange={(r) => setReportRange(r)}
             />
           ) : activePage === 'AI Assistant' ? (
-            <FigmaAIAssistant inventory={inventory} shopName={settings?.name} />
+            <FigmaAIAssistant
+              inventory={inventory}
+              shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
+              ownerName={currentUser?.name || settings?.name}
+            />
           ) : activePage === 'Settings' ? (
             <FigmaSettings settings={settings} onSaveSettings={updateVendorSettings} />
           ) : activePage === 'Privacy' ? (
@@ -299,6 +348,8 @@ export const App: React.FC = () => {
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleConfirmUpdate}
+        message={activeUpdateMessage}
+        inventory={inventory}
         productName={activeUpdateMessage}
       />
 

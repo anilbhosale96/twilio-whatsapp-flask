@@ -112,6 +112,16 @@ ITEM_SYNONYMS = {
     "tamatar": "tomato"
 }
 
+STRIP_WORDS = {
+    "aaya", "aaye", "aayi", "laaya", "laya", "laaye", "laye", "kharida", "khareeda",
+    "kharide", "buy", "bought", "purchase", "purchased", "mila", "mili", "mile",
+    "aala", "aale", "aali", "anle", "aanle", "ghetla", "ghetle", "ghetli", "bharle",
+    "restock", "add", "added", "adds", "becha", "beche", "bechi", "bik", "diya", "diye",
+    "dila", "dile", "vikla", "vikle", "vikli", "gela", "gele", "geli", "sell", "sold",
+    "sells", "bhai", "bhaiya", "ji", "sir", "hai", "hain", "tha", "thi", "the", "ho",
+    "gaya", "gaye", "gayi", "karo", "kara", "liya", "liye", "aur", "and"
+}
+
 def normalize_unit(raw_unit: Optional[str]) -> str:
     if not raw_unit:
         return "pcs"
@@ -120,8 +130,24 @@ def normalize_unit(raw_unit: Optional[str]) -> str:
 
 def normalize_item_name(raw_name: str) -> str:
     cleaned = raw_name.strip().lower()
-    # Strip non-alphanumeric except spaces
+    # Strip non-alphanumeric except spaces and dashes
     cleaned = re.sub(r"[^\w\s-]", "", cleaned).strip()
+
+    # Strip leading and trailing action/filler words iteratively
+    words = cleaned.split()
+    changed = True
+    while changed and words:
+        changed = False
+        if words and words[0] in STRIP_WORDS:
+            words.pop(0)
+            changed = True
+        if words and words[-1] in STRIP_WORDS:
+            words.pop(-1)
+            changed = True
+
+    cleaned = " ".join(words).strip()
+    if not cleaned:
+        return ""
     
     # Check dictionary
     if cleaned in ITEM_SYNONYMS:
@@ -135,4 +161,5 @@ def normalize_item_name(raw_name: str) -> str:
         return stem
 
     return cleaned
+
 

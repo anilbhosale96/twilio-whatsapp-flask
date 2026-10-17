@@ -4,7 +4,7 @@ import type { VendorSettings } from '../types';
 
 interface FigmaSettingsProps {
   settings: VendorSettings | null;
-  onSaveSettings: (data: { name?: string; default_threshold?: number; language?: string }) => Promise<boolean>;
+  onSaveSettings: (data: { name?: string; shop_name?: string; default_threshold?: number; language?: string }) => Promise<boolean>;
 }
 
 export const FigmaSettings: React.FC<FigmaSettingsProps> = ({
@@ -12,18 +12,28 @@ export const FigmaSettings: React.FC<FigmaSettingsProps> = ({
   onSaveSettings
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'wa' | 'domain' | 'security'>('profile');
-  const [shopName, setShopName] = useState(settings?.name || 'Sharma General Store');
-  const [ownerName, setOwnerName] = useState('Rajesh Sharma');
-  const [email, setEmail] = useState('rajesh@example.com');
-  const [category, setCategory] = useState('Grocery');
+  const [shopName, setShopName] = useState(settings?.shop_name || settings?.name || 'Sharma General Store');
+  const [ownerName, setOwnerName] = useState(settings?.name || 'Shop Owner');
+  const [email, setEmail] = useState('shop@example.com');
+  const [category, setCategory] = useState(settings?.category || 'Grocery');
   const [city, setCity] = useState('Pune');
   const [threshold, setThreshold] = useState(settings?.default_threshold || 10);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  React.useEffect(() => {
+    if (settings) {
+      setShopName(settings.shop_name || settings.name || '');
+      setOwnerName(settings.name || '');
+      setThreshold(settings.default_threshold ?? 10);
+      if (settings.category) setCategory(settings.category);
+    }
+  }, [settings]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSaveSettings({
-      name: shopName,
+      name: ownerName,
+      shop_name: shopName,
       default_threshold: threshold
     });
     setSavedSuccess(true);
@@ -106,12 +116,15 @@ export const FigmaSettings: React.FC<FigmaSettingsProps> = ({
                 </label>
 
                 <label>
-                  <span>Mobile Number (Masked)</span>
+                  <span>Mobile Number (WhatsApp)</span>
                   <input
-                    value={settings?.phone_masked || '+91 98*** **210'}
+                    value={settings?.phone_raw || settings?.phone_masked || '+91 98765 43210'}
                     disabled
                     className="opacity-75 cursor-not-allowed"
                   />
+                  <small className="text-xs text-[#58657d] dark:text-[#94a3b8]">
+                    Verified store number: {settings?.phone_raw || settings?.phone_masked || ''}
+                  </small>
                 </label>
 
                 <label>

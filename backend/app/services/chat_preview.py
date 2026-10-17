@@ -40,10 +40,17 @@ class ChatPreviewManager:
         if len(self.history) > self.max_history:
             self.history.pop()
 
-    def get_latest(self) -> Optional[Dict[str, Any]]:
+    def get_latest(self, phone: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if phone:
+            for msg in self.history:
+                if msg.get("phone_raw") == phone:
+                    return msg
+            return None
         return self.history[0] if self.history else None
 
-    def get_all(self) -> List[Dict[str, Any]]:
+    def get_all(self, phone: Optional[str] = None) -> List[Dict[str, Any]]:
+        if phone:
+            return [msg for msg in self.history if msg.get("phone_raw") == phone]
         return self.history
 
 chat_preview_manager = ChatPreviewManager()

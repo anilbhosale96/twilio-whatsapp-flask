@@ -26,6 +26,7 @@ export interface SummaryData {
   negative_stock_count: number;
   alerts_count: number;
   sales_today_units: number;
+  today_updates_count?: number;
   revenue_today: number;
   revenue_today_formatted: string;
   top_sellers: TopSeller[];
@@ -92,22 +93,36 @@ export interface ReportItem {
   revenue: number;
 }
 
+export interface DailyMovementItem {
+  date: string;
+  day_label: string;
+  stock_in: number;
+  stock_out: number;
+  total_moved: number;
+}
+
 export interface ReportsData {
   range: string;
   start_date: string;
   total_revenue: number;
   total_revenue_formatted: string;
   total_units_sold: number;
+  total_stock_in_units?: number;
+  total_stock_out_units?: number;
   item_count: number;
+  critical_count?: number;
   items: ReportItem[];
   top_items: ReportItem[];
   slowest_items: ReportItem[];
+  daily_movement?: DailyMovementItem[];
 }
 
 export interface VendorSettings {
   phone_masked: string;
   phone_raw: string;
   name: string | null;
+  shop_name?: string | null;
+  category?: string | null;
   default_threshold: number;
   language: string;
   created_at: string;
@@ -129,4 +144,13 @@ export interface ChatMessage {
   }>;
   timestamp: string;
 }
+
+export interface AuthUser {
+  phone: string;
+  name: string;
+  shop_name: string;
+  category: string;
+  language?: string;
+}
+
 

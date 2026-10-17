@@ -36,9 +36,31 @@ SELL_KEYWORDS = {
 def parse_command(text: str) -> Optional[ParsedCommand]:
     cleaned = text.strip().lower()
     
+    # Start / Greeting / Onboarding commands
+    if cleaned in {"hi", "hello", "start", "register", "join", "namaste", "namaskar", "shuru"}:
+        return ParsedCommand(command="start")
+
     # Help commands
     if cleaned in {"help", "madad", "sahayata", "?"}:
         return ParsedCommand(command="help")
+
+    # Language setting: lang <language> or bhasha <language>
+    lang_match = re.match(r"^(?:lang|language|bhasha)\s+([a-zA-Z]+)$", cleaned)
+    if lang_match:
+        lang_arg = lang_match.group(1).strip()
+        return ParsedCommand(command="lang", args=[lang_arg])
+
+    # Shop name setting: shop <shop name>
+    shop_match = re.match(r"^(?:shop|dukan|dookan)\s+(.+)$", cleaned)
+    if shop_match:
+        shop_arg = shop_match.group(1).strip()
+        return ParsedCommand(command="shop", args=[shop_arg])
+
+    # Owner name setting: name <owner name>
+    name_match = re.match(r"^(?:name|malik|owner)\s+(.+)$", cleaned)
+    if name_match:
+        name_arg = name_match.group(1).strip()
+        return ParsedCommand(command="name", args=[name_arg])
     
     # Stock commands
     if cleaned in {"stock", "inventory", "maal", "check stock", "stock list"}:
@@ -95,18 +117,25 @@ def determine_action(text: str, default_action: Optional[ActionType] = None) -> 
     action = default_action or "ADD"
     cleaned_tokens = []
     
+    # Strip leading/trailing punctuation from tokens for keyword matching
+    clean_words = [re.sub(r"^[^\w]+|[^\w]+$", "", tok) for tok in tokens]
+
     # Look for sell keywords
-    has_sell = any(tok in SELL_KEYWORDS for tok in tokens) or "bik gaya" in text.lower()
-    has_add = any(tok in ADD_KEYWORDS for tok in tokens)
+    has_sell = any(tok in SELL_KEYWORDS for tok in clean_words) or "bik gaya" in text.lower() or "bik gaye" in text.lower()
+    has_add = any(tok in ADD_KEYWORDS for tok in clean_words)
 
     if has_sell and not has_add:
         action = "SELL"
     elif has_add and not has_sell:
         action = "ADD"
 
-    # Remove the action keyword from the token list for item extraction
-    for tok in tokens:
-        if tok in ADD_KEYWORDS or tok in SELL_KEYWORDS or tok in {"kara", "karo", "liya", "de", "do"}:
+    # Remove the action keywords and common fillers from the token list for item extraction
+    action_and_fillers = ADD_KEYWORDS | SELL_KEYWORDS | {
+        "kara", "karo", "liya", "liye", "de", "do", "bhai", "bhaiya", "ji",
+        "sir", "hai", "hain", "tha", "thi", "the", "gaya", "gaye", "gayi"
+    }
+    for tok, clean_w in zip(tokens, clean_words):
+        if clean_w in action_and_fillers:
             continue
         cleaned_tokens.append(tok)
 
@@ -198,14 +227,17 @@ def parse_message(raw_text: str) -> ParseResult:
     if cmd:
         return ParseResult(is_command=True, command=cmd, raw_text=text)
 
-    # Determine leading parent action if whole message starts with Add/Sold
+    # Determine leading or trailing parent action if whole message starts/ends with Add/Sold keywords
     parent_action: Optional[ActionType] = None
     lower_text = text.lower()
-    first_word = lower_text.split()[0] if lower_text.split() else ""
-    if first_word in ADD_KEYWORDS:
-        parent_action = "ADD"
-    elif first_word in SELL_KEYWORDS:
-        parent_action = "SELL"
+    clean_words = re.sub(r"[^\w\s-]", " ", lower_text).split()
+    if clean_words:
+        first_word = clean_words[0]
+        last_word = clean_words[-1]
+        if first_word in ADD_KEYWORDS or last_word in ADD_KEYWORDS:
+            parent_action = "ADD"
+        elif first_word in SELL_KEYWORDS or last_word in SELL_KEYWORDS or "bik gaya" in lower_text or "bik gaye" in lower_text:
+            parent_action = "SELL"
 
     # Split into multi-item chunks (commas, 'and', 'aur', 'ani', newlines)
     # Be careful not to split inside numbers or words

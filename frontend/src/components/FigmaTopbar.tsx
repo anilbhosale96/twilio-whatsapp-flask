@@ -11,6 +11,7 @@ interface FigmaTopbarProps {
   status: ConnectionStatus;
   alertsCount: number;
   shopName?: string | null;
+  ownerName?: string | null;
   onAlertsClick: () => void;
   onSearchChange?: (q: string) => void;
   onLogout?: () => void;
@@ -25,6 +26,7 @@ export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
   status,
   alertsCount,
   shopName,
+  ownerName,
   onAlertsClick,
   onSearchChange,
   onLogout
@@ -119,18 +121,29 @@ export const FigmaTopbar: React.FC<FigmaTopbarProps> = ({
         </button>
 
         {/* Profile Card */}
-        <button
-          className="profile cursor-pointer"
-          onClick={onLogout}
-          title="Click to Log Out"
-        >
-          <span>RS</span>
-          <div>
-            <b>Rajesh Sharma</b>
-            <small>{shopName || "Sharma General Store"}</small>
-          </div>
-          <FigmaIcon name="chevron" size={14} />
-        </button>
+        {(() => {
+          const displayName = ownerName || "Shop Owner";
+          const initials = displayName
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w: string) => w[0].toUpperCase())
+            .join('') || 'SO';
+          return (
+            <button
+              className="profile cursor-pointer"
+              onClick={onLogout}
+              title="Click to Log Out"
+            >
+              <span>{initials}</span>
+              <div>
+                <b>{displayName}</b>
+                <small>{shopName || "My Kirana Store"}</small>
+              </div>
+              <FigmaIcon name="chevron" size={14} />
+            </button>
+          );
+        })()}
 
         {/* Explicit Logout Button */}
         {onLogout && (
