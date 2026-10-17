@@ -24,6 +24,7 @@ def build_twiml_response(message: str) -> str:
 @router.post("/webhook")
 @router.post("/api/webhook")
 @router.post("/api/webhook/whatsapp")
+@router.post("/whatsapp")
 async def twilio_webhook(
     request: Request,
     From: str = Form(""),

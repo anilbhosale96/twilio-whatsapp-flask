@@ -40,17 +40,29 @@ class ChatPreviewManager:
         if len(self.history) > self.max_history:
             self.history.pop()
 
+    def _match_phone(self, p1: Optional[str], p2: Optional[str]) -> bool:
+        if not p1 or not p2:
+            return False
+        import re
+        d1 = re.sub(r"\D", "", p1)
+        d2 = re.sub(r"\D", "", p2)
+        if not d1 or not d2:
+            return False
+        return d1 == d2 or d1.endswith(d2) or d2.endswith(d1)
+
     def get_latest(self, phone: Optional[str] = None) -> Optional[Dict[str, Any]]:
         if phone:
             for msg in self.history:
-                if msg.get("phone_raw") == phone:
+                if self._match_phone(msg.get("phone_raw"), phone):
                     return msg
-            return None
+            # Fallback to absolute latest if only 1 vendor or previewing
+            return self.history[0] if self.history else None
         return self.history[0] if self.history else None
 
     def get_all(self, phone: Optional[str] = None) -> List[Dict[str, Any]]:
         if phone:
-            return [msg for msg in self.history if msg.get("phone_raw") == phone]
+            filtered = [msg for msg in self.history if self._match_phone(msg.get("phone_raw"), phone)]
+            return filtered if filtered else self.history
         return self.history
 
 chat_preview_manager = ChatPreviewManager()

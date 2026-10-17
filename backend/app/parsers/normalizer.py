@@ -109,11 +109,14 @@ ITEM_SYNONYMS = {
     "batata": "potato",
     "tomato": "tomato",
     "tomatoes": "tomato",
-    "tamatar": "tomato"
+    "tamatar": "tomato",
+    "parleg": "parle g",
+    "parle-g": "parle g",
+    "parle g": "parle g"
 }
 
 STRIP_WORDS = {
-    "aaya", "aaye", "aayi", "laaya", "laya", "laaye", "laye", "kharida", "khareeda",
+    "aaya", "aaye", "aayi", "aya", "aye", "ayi", "laaya", "laya", "laaye", "laye", "kharida", "khareeda",
     "kharide", "buy", "bought", "purchase", "purchased", "mila", "mili", "mile",
     "aala", "aale", "aali", "anle", "aanle", "ghetla", "ghetle", "ghetli", "bharle",
     "restock", "add", "added", "adds", "becha", "beche", "bechi", "bik", "diya", "diye",
