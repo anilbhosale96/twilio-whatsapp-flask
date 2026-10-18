@@ -294,7 +294,12 @@ export const App: React.FC = () => {
               }}
             />
           ) : activePage === 'Analytics' ? (
-            <FigmaAnalytics inventory={inventory} />
+            <FigmaAnalytics
+              inventory={inventory}
+              transactions={transactions}
+              reports={reports}
+              summary={summary}
+            />
           ) : activePage === 'Reports' ? (
             <FigmaReports
               reports={reports}

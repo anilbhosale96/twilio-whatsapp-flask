@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { FigmaIcon } from './FigmaIcon';
 import { FigmaQuickUpdate } from './FigmaQuickUpdate';
+import { InteractiveMovementChart } from './InteractiveMovementChart';
 import type { SummaryData, InventoryItem, TransactionItem } from '../types';
 import type { FigmaPage } from './FigmaSidebar';
 
@@ -17,36 +18,6 @@ interface FigmaDashboardProps {
   latestMessageText?: string;
 }
 
-function generateSmoothPath(points: { x: number; y: number }[]): string {
-  if (points.length === 0) return '';
-  if (points.length === 1) return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-
-  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = i > 0 ? points[i - 1] : points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = i < points.length - 2 ? points[i + 2] : p2;
-
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-  }
-  return d;
-}
-
-function generateAreaPath(points: { x: number; y: number }[], baselineY = 160): string {
-  if (points.length < 2) return '';
-  const curve = generateSmoothPath(points);
-  const first = points[0];
-  const last = points[points.length - 1];
-  return `${curve} L ${last.x.toFixed(1)} ${baselineY} L ${first.x.toFixed(1)} ${baselineY} Z`;
-}
-
 export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
   summary,
   inventory,
@@ -60,112 +31,8 @@ export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
   latestMessageText
 }) => {
   const lowItems = inventory.filter((item) => item.qty <= item.threshold);
-  const [movementPeriod, setMovementPeriod] = useState<'7d' | '30d'>('7d');
 
-  const { pointsIn, pointsOut, totalStockIn, totalStockOut, yLabels, xLabels } = useMemo(() => {
-    const numDays = movementPeriod === '7d' ? 7 : 30;
 
-    // Group transactions by date key (YYYY-MM-DD)
-    const dateMap: Record<string, { in: number; out: number }> = {};
-    (transactions || []).forEach((tx) => {
-      if (tx.undone) return;
-      const d = new Date(tx.created_at);
-      if (isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (!dateMap[key]) {
-        dateMap[key] = { in: 0, out: 0 };
-      }
-      const val = Math.abs(tx.change);
-      if (tx.type === 'add' || tx.change > 0) {
-        dateMap[key].in += val;
-      } else {
-        dateMap[key].out += val;
-      }
-    });
-
-    const buckets: { dateKey: string; label: string; fullDate: string }[] = [];
-    const today = new Date();
-    for (let i = numDays - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const label = numDays === 7
-        ? d.toLocaleDateString('en-US', { weekday: 'short' })
-        : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      const fullDate = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-      buckets.push({ dateKey, label, fullDate });
-    }
-
-    let sumIn = 0;
-    let sumOut = 0;
-    let maxVal = 0;
-
-    const width = 640;
-    const startX = 30;
-
-    const rawIn: { x: number; val: number; label: string; fullDate: string }[] = [];
-    const rawOut: { x: number; val: number; label: string; fullDate: string }[] = [];
-
-    buckets.forEach((b, idx) => {
-      const data = dateMap[b.dateKey] || { in: 0, out: 0 };
-      sumIn += data.in;
-      sumOut += data.out;
-      if (data.in > maxVal) maxVal = data.in;
-      if (data.out > maxVal) maxVal = data.out;
-
-      const x = startX + (idx / (buckets.length - 1)) * width;
-      rawIn.push({ x, val: data.in, label: b.label, fullDate: b.fullDate });
-      rawOut.push({ x, val: data.out, label: b.label, fullDate: b.fullDate });
-    });
-
-    const computedMaxScale = maxVal === 0 ? 10 : Math.ceil(maxVal / 4) * 4;
-    const chartHeight = 135;
-    const baselineY = 160;
-
-    const coordsIn = rawIn.map((p) => ({
-      x: p.x,
-      y: maxVal === 0 ? baselineY : baselineY - (p.val / computedMaxScale) * chartHeight,
-      val: p.val,
-      label: p.label,
-      fullDate: p.fullDate
-    }));
-
-    const coordsOut = rawOut.map((p) => ({
-      x: p.x,
-      y: maxVal === 0 ? baselineY : baselineY - (p.val / computedMaxScale) * chartHeight,
-      val: p.val,
-      label: p.label,
-      fullDate: p.fullDate
-    }));
-
-    const computedYLabels = [
-      computedMaxScale,
-      Math.round(computedMaxScale * 0.75),
-      Math.round(computedMaxScale * 0.5),
-      Math.round(computedMaxScale * 0.25),
-      0
-    ];
-
-    const computedXLabels = numDays === 7
-      ? buckets.map((b) => b.label)
-      : [
-          buckets[0].label,
-          buckets[Math.floor(buckets.length * 0.2)].label,
-          buckets[Math.floor(buckets.length * 0.4)].label,
-          buckets[Math.floor(buckets.length * 0.6)].label,
-          buckets[Math.floor(buckets.length * 0.8)].label,
-          buckets[buckets.length - 1].label
-        ];
-
-    return {
-      pointsIn: coordsIn,
-      pointsOut: coordsOut,
-      totalStockIn: sumIn,
-      totalStockOut: sumOut,
-      yLabels: computedYLabels,
-      xLabels: computedXLabels
-    };
-  }, [movementPeriod, transactions]);
 
   return (
     <div className="page dashboard-page space-y-6">
@@ -243,122 +110,14 @@ export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
       {/* Dashboard Grid: Movement Chart & Low Stock */}
       <div className="dashboard-grid">
         {/* Inventory Movement Dynamic Chart */}
-        <section className="panel movement-panel">
-          <div className="panel-head">
-            <div>
-              <h3>Inventory movement</h3>
-              <p>Stock in and out over the {movementPeriod === '7d' ? 'last 7 days' : 'last 30 days'}</p>
-            </div>
-            <select
-              aria-label="Chart period"
-              value={movementPeriod}
-              onChange={(e) => setMovementPeriod(e.target.value as '7d' | '30d')}
-            >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-            </select>
-          </div>
-
-          <div className="chart-legend">
-            <span>
-              <i className="blue-dot" />
-              Stock In <b>+{totalStockIn}</b>
-            </span>
-            <span>
-              <i className="gray-dot" />
-              Stock Out <b>−{totalStockOut}</b>
-            </span>
-          </div>
-
-          <div className="line-chart">
-            <div className="y-labels">
-              {yLabels.map((lbl, idx) => (
-                <span key={idx}>{lbl}</span>
-              ))}
-            </div>
-            <svg viewBox="0 0 700 190" preserveAspectRatio="none" role="img" aria-label="Inventory movement trend">
-              <defs>
-                <linearGradient id="areaDash" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#2563eb" stopOpacity="0.18" />
-                  <stop offset="1" stopColor="#2563eb" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid lines */}
-              {[25, 58.75, 92.5, 126.25, 160].map((gridY, idx) => (
-                <line
-                  key={idx}
-                  x1="30"
-                  y1={gridY}
-                  x2="670"
-                  y2={gridY}
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                  opacity={0.35}
-                />
-              ))}
-
-              {/* Area fill for Stock In */}
-              {totalStockIn > 0 && (
-                <path d={generateAreaPath(pointsIn, 160)} fill="url(#areaDash)" />
-              )}
-
-              {/* Stock In curve (Blue) */}
-              <path
-                d={generateSmoothPath(pointsIn)}
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="3"
-                vectorEffect="non-scaling-stroke"
-              />
-
-              {/* Stock Out curve (Slate dashed) */}
-              <path
-                d={generateSmoothPath(pointsOut)}
-                fill="none"
-                stroke="#94a3b8"
-                strokeWidth="2.5"
-                strokeDasharray="5 3"
-                vectorEffect="non-scaling-stroke"
-              />
-
-              {/* Circles for Stock In */}
-              <g fill="#fff" stroke="#2563eb" strokeWidth="2.5">
-                {pointsIn.map((p, idx) => (
-                  <circle
-                    key={`in-${idx}`}
-                    cx={p.x}
-                    cy={p.y}
-                    r={p.val > 0 ? 4 : 2}
-                    vectorEffect="non-scaling-stroke"
-                  >
-                    <title>{`${p.fullDate}: +${p.val} Stock In`}</title>
-                  </circle>
-                ))}
-              </g>
-
-              {/* Circles for Stock Out */}
-              <g fill="#fff" stroke="#94a3b8" strokeWidth="2">
-                {pointsOut.map((p, idx) => (
-                  <circle
-                    key={`out-${idx}`}
-                    cx={p.x}
-                    cy={p.y}
-                    r={p.val > 0 ? 3.5 : 2}
-                    vectorEffect="non-scaling-stroke"
-                  >
-                    <title>{`${p.fullDate}: -${p.val} Stock Out`}</title>
-                  </circle>
-                ))}
-              </g>
-            </svg>
-            <div className="x-labels">
-              {xLabels.map((lbl, idx) => (
-                <span key={idx}>{lbl}</span>
-              ))}
-            </div>
-          </div>
+        <section className="panel movement-panel p-5">
+          <InteractiveMovementChart
+            transactions={transactions}
+            inventory={inventory}
+            defaultPeriod="7d"
+            title="Inventory movement"
+            subtitle="Interactive stock flow (hover points for details)"
+          />
         </section>
 
         {/* Needs Attention Panel */}
