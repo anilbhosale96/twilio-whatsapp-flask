@@ -27,6 +27,7 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
   onProductAddedToBill
 }) => {
   const [name, setName] = useState('');
+  const [customBarcode, setCustomBarcode] = useState(barcode || '');
   const [sku, setSku] = useState('');
   const [unit, setUnit] = useState('pcs');
   const [price, setPrice] = useState('');
@@ -37,6 +38,18 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
   const [billQuantity, setBillQuantity] = useState('1');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setSku('');
+      setPrice('');
+      setCostPrice('');
+      setCustomBarcode(barcode || '');
+      setBillQuantity('1');
+      setErrorMsg(null);
+    }
+  }, [isOpen, barcode]);
 
   if (!isOpen) return null;
 
@@ -56,9 +69,10 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
     setErrorMsg(null);
 
     try {
+      const finalBarcode = (barcode || customBarcode || '').trim();
       const formData = new FormData();
       formData.append('name', name.trim());
-      formData.append('barcode', barcode.trim());
+      if (finalBarcode) formData.append('barcode', finalBarcode);
       if (sku.trim()) formData.append('sku', sku.trim());
       formData.append('unit', unit);
       formData.append('price', numPrice.toString());
@@ -91,15 +105,19 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center">
+            <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center">
               <FigmaIcon name="plus" size={17} />
             </span>
             <div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                New Product Detected
+                {barcode ? 'New Barcode Product' : 'Add New Product to Inventory'}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Barcode <b>{barcode}</b> is not in inventory yet. Add it now.
+                {barcode ? (
+                  <>Barcode <b>{barcode}</b> not found. Catalog it & add to current bill.</>
+                ) : (
+                  'Fill details to save into shop inventory and immediately add to current bill.'
+                )}
               </p>
             </div>
           </div>
@@ -123,14 +141,24 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Scanned Barcode
+                {barcode ? 'Scanned Barcode' : 'Barcode / EAN (Optional)'}
               </label>
-              <input
-                type="text"
-                disabled
-                value={barcode}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono font-bold"
-              />
+              {barcode ? (
+                <input
+                  type="text"
+                  disabled
+                  value={barcode}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono font-bold"
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={customBarcode}
+                  onChange={(e) => setCustomBarcode(e.target.value)}
+                  placeholder="e.g. 8901030383786"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                />
+              )}
             </div>
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -307,3 +335,4 @@ export const FigmaBarcodeAddProductModal: React.FC<FigmaBarcodeAddProductModalPr
     </div>
   );
 };
+

@@ -214,6 +214,22 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
     setLineItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleAddCustomLineItem = () => {
+    setLineItems((prev) => [
+      ...prev,
+      {
+        product_name: 'Custom Product / Item',
+        qty: 1,
+        unit: 'pcs',
+        unit_price: 50,
+        discount: 0,
+        tax_rate: 0,
+        line_total: 50
+      }
+    ]);
+    onShowToast('Added custom line item to bill.');
+  };
+
   // Financial Calculations
   const calculations = useMemo(() => {
     let subtotal = 0;
@@ -562,7 +578,28 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                   <span>Add Products to Bill</span>
                 </span>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannedUnknownBarcode('');
+                      setIsAddProductModalOpen(true);
+                    }}
+                    className="flex-1 sm:flex-none px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <FigmaIcon name="plus" size={14} />
+                    <span>+ Add Product</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddCustomLineItem}
+                    className="flex-1 sm:flex-none px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <FigmaIcon name="edit" size={14} />
+                    <span>+ Custom Item</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setIsBarcodeScannerOpen(true)}
@@ -600,7 +637,7 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                   <FigmaIcon name="search" size={15} />
                 </span>
 
-                {isProductDropdownOpen && filteredInventory.length > 0 && (
+                {isProductDropdownOpen && (
                   <div className="absolute left-0 right-0 top-12 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
                     {filteredInventory.map((item) => (
                       <div
@@ -620,6 +657,36 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                         </div>
                       </div>
                     ))}
+
+                    {filteredInventory.length === 0 && productSearchQuery.trim() && (
+                      <div className="p-4 text-center text-slate-400 space-y-2">
+                        <p>No product found matching "{productSearchQuery}".</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProductDropdownOpen(false);
+                            setScannedUnknownBarcode('');
+                            setIsAddProductModalOpen(true);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                        >
+                          <FigmaIcon name="plus" size={14} />
+                          <span>+ Add "{productSearchQuery}" to Inventory & Bill</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <div
+                      onClick={() => {
+                        setIsProductDropdownOpen(false);
+                        setScannedUnknownBarcode('');
+                        setIsAddProductModalOpen(true);
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold text-center cursor-pointer border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-1.5"
+                    >
+                      <FigmaIcon name="plus" size={14} />
+                      <span>+ Catalog New Product to Inventory & Bill</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -643,7 +710,36 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                     {lineItems.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-12 text-center text-slate-400">
-                          No items added yet. Search products above or scan barcodes to begin.
+                          <p className="mb-3 text-xs">No items added yet. Click an option below or search products above to begin:</p>
+                          <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScannedUnknownBarcode('');
+                                setIsAddProductModalOpen(true);
+                              }}
+                              className="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                            >
+                              <FigmaIcon name="plus" size={14} />
+                              <span>+ Add Product</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAddCustomLineItem}
+                              className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <FigmaIcon name="edit" size={14} />
+                              <span>+ Custom Item</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsBarcodeScannerOpen(true)}
+                              className="btn btn-primary px-4 py-2 text-xs font-bold rounded-xl inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <FigmaIcon name="camera" size={14} />
+                              <span>Scan Barcode</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -655,9 +751,21 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                           <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                             <td className="py-2.5 px-1 font-mono text-slate-400">{idx + 1}</td>
                             <td className="py-2.5 px-2">
-                              <b className="text-slate-900 dark:text-white block">
-                                {it.product_name}
-                              </b>
+                              {!it.item_id ? (
+                                <input
+                                  type="text"
+                                  value={it.product_name}
+                                  onChange={(e) =>
+                                    handleUpdateLineItem(idx, { product_name: e.target.value })
+                                  }
+                                  className="w-full px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                                  placeholder="Enter item name"
+                                />
+                              ) : (
+                                <b className="text-slate-900 dark:text-white block">
+                                  {it.product_name}
+                                </b>
+                              )}
                               {it.barcode && (
                                 <span className="text-[10px] text-slate-400 font-mono">
                                   {it.barcode}
@@ -740,6 +848,36 @@ export const FigmaBilling: React.FC<FigmaBillingProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Table Footer Action Bar */}
+              {lineItems.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {lineItems.length} {lineItems.length === 1 ? 'item' : 'items'} in bill
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannedUnknownBarcode('');
+                        setIsAddProductModalOpen(true);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                    >
+                      <FigmaIcon name="plus" size={13} />
+                      <span>+ Add Product</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomLineItem}
+                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs text-slate-700 dark:text-slate-300"
+                    >
+                      <FigmaIcon name="edit" size={13} />
+                      <span>+ Custom Item</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
