@@ -33,8 +33,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
-        # In local development, bypass rate limits for instant dashboard reactivity
-        if client_ip in {"127.0.0.1", "localhost", "::1"}:
+        # In local development and automated test runner, bypass rate limits for instant reactivity
+        if client_ip in {"127.0.0.1", "localhost", "::1", "testclient"}:
             return await call_next(request)
 
         if not rate_limiter.is_allowed(client_ip):

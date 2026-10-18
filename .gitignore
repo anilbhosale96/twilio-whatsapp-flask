@@ -51,3 +51,7 @@ flask-project/
 app.py
 whatsapp-inbox/
 
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+

@@ -3,6 +3,7 @@ import { FigmaIcon } from './FigmaIcon';
 
 export type FigmaPage =
   | 'Dashboard'
+  | 'Orders'
   | 'Inventory'
   | 'WhatsApp Activity'
   | 'Transactions'
@@ -20,6 +21,7 @@ interface FigmaSidebarProps {
   open: boolean;
   close: () => void;
   alertsCount: number;
+  ordersCount?: number;
   shopName?: string | null;
   ownerName?: string | null;
   onGoToLanding: () => void;
@@ -28,6 +30,7 @@ interface FigmaSidebarProps {
 
 const WORKSPACE_NAV: Array<[FigmaPage, string]> = [
   ['Dashboard', 'box'],
+  ['Orders', 'bag'],
   ['Inventory', 'inventory'],
   ['WhatsApp Activity', 'whatsapp'],
   ['Transactions', 'arrow'],
@@ -49,6 +52,7 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
   open,
   close,
   alertsCount,
+  ordersCount,
   shopName,
   ownerName,
   onGoToLanding,
@@ -94,6 +98,7 @@ export const FigmaSidebar: React.FC<FigmaSidebarProps> = ({
               <FigmaIcon name={iconName} size={17} />
               <span>{name}</span>
               {name === 'Alerts' && alertsCount > 0 && <em>{alertsCount}</em>}
+              {name === 'Orders' && (ordersCount ?? 0) > 0 && <em>{ordersCount}</em>}
             </button>
           ))}
 

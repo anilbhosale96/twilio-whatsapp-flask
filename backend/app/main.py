@@ -12,6 +12,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.auth import router as auth_router
 from app.api.bill_analyzer import router as bill_router
 from app.api.products import router as products_router
+from app.api.orders import router as orders_router
 import asyncio
 from app.services.broadcaster import broadcaster
 from sqlalchemy import text
@@ -32,6 +33,10 @@ def ensure_db_migrations():
                 conn.execute(text("ALTER TABLE vendors ADD COLUMN category VARCHAR(50) DEFAULT 'Grocery'"))
             if "role" not in col_names:
                 conn.execute(text("ALTER TABLE vendors ADD COLUMN role VARCHAR(20) DEFAULT 'vendor'"))
+            if "gstin" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN gstin VARCHAR(20)"))
+            if "address" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN address VARCHAR(255)"))
 
             # 2. Items table columns
             res_items = conn.execute(text("PRAGMA table_info(items)")).fetchall()
@@ -111,6 +116,7 @@ app.include_router(webhook_router)
 app.include_router(dashboard_router)
 app.include_router(bill_router)
 app.include_router(products_router)
+app.include_router(orders_router)
 
 @app.get("/health", tags=["System"])
 def health_check() -> dict:

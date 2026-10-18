@@ -189,5 +189,76 @@ export interface ProductDiscoveryItem {
   updated_at?: string;
 }
 
+export interface OrderItemData {
+  id?: number;
+  item_id?: number | null;
+  product_name: string;
+  unit: string;
+  qty: number;
+  unit_price?: number | null;
+  line_total: number;
+  price_source?: string;
+  reference_note?: string | null;
+  reference_confidence?: number | null;
+  in_stock?: boolean;
+  current_inventory_qty?: number | null;
+  is_confirmed_by_vendor?: boolean;
+}
 
+export interface BillData {
+  id: number;
+  bill_number: string;
+  bill_type: 'quotation' | 'invoice';
+  version: number;
+  issue_date?: string;
+  subtotal: number;
+  discount: number;
+  tax_rate: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  igst_amount: number;
+  delivery_charge: number;
+  final_total: number;
+  payment_status: 'unpaid' | 'paid' | 'cancelled';
+  payment_method?: string;
+  vendor_gstin?: string;
+  has_pdf: boolean;
+}
 
+export interface OrderData {
+  id: string;
+  customer_phone?: string;
+  customer_name: string;
+  customer_address?: string;
+  vendor: {
+    phone: string;
+    name: string;
+    category: string;
+  };
+  request_type: 'cart' | 'custom_text' | 'image_list';
+  raw_text?: string;
+  has_image?: boolean;
+  notes?: string;
+  status:
+    | 'New'
+    | 'Reviewing'
+    | 'Awaiting Price'
+    | 'Quote Sent'
+    | 'Awaiting Customer Approval'
+    | 'Confirmed'
+    | 'Preparing'
+    | 'Completed'
+    | 'Cancelled';
+  price_status: 'pending' | 'quoted' | 'confirmed' | 'paid';
+  subtotal: number;
+  discount: number;
+  tax_amount: number;
+  delivery_charge: number;
+  total_amount: number;
+  stock_deducted: boolean;
+  delivery_notification_status?: string;
+  created_at?: string;
+  updated_at?: string;
+  items: OrderItemData[];
+  bills: BillData[];
+}

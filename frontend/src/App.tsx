@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLiveDashboard } from './hooks/useLiveDashboard';
 import { FigmaLanding } from './components/FigmaLanding';
 import { FigmaAuth } from './components/FigmaAuth';
@@ -7,6 +7,7 @@ import { FigmaSidebar } from './components/FigmaSidebar';
 import type { FigmaPage } from './components/FigmaSidebar';
 import { FigmaTopbar } from './components/FigmaTopbar';
 import { FigmaDashboard } from './components/FigmaDashboard';
+import { FigmaOrders } from './components/FigmaOrders';
 import { FigmaInventory } from './components/FigmaInventory';
 import { FigmaProductDetail } from './components/FigmaProductDetail';
 import { FigmaWhatsAppActivity } from './components/FigmaWhatsAppActivity';
@@ -21,7 +22,7 @@ import { FigmaQuickUpdateModal } from './components/FigmaQuickUpdateModal';
 import { FigmaBottomNav } from './components/FigmaBottomNav';
 import { PrivacyAndTerms } from './components/PrivacyAndTerms';
 import { FigmaIcon } from './components/FigmaIcon';
-import type { InventoryItem } from './types';
+import type { InventoryItem, OrderData } from './types';
 
 export const App: React.FC = () => {
   const {
@@ -50,7 +51,17 @@ export const App: React.FC = () => {
     updateVendorSettings,
     sendSimulationMessage,
     sendDirectMessage,
-    refreshAll
+    refreshAll,
+    placeCustomerOrder,
+    fetchCustomerOrders,
+    approveCustomerQuote,
+    cancelCustomerOrder,
+    fetchVendorOrders,
+    updateVendorOrderItems,
+    sendVendorQuote,
+    generateVendorBill,
+    updateVendorOrderStatus,
+    markVendorOrderPaid
   } = useLiveDashboard();
 
   // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
@@ -70,6 +81,33 @@ export const App: React.FC = () => {
   const [isQuickUpdateModalOpen, setIsQuickUpdateModalOpen] = useState(false);
   const [quickUpdateInitialTab, setQuickUpdateInitialTab] = useState<'bill' | 'voice'>('bill');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [vendorOrders, setVendorOrders] = useState<OrderData[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const loadVendorOrders = useCallback(async () => {
+    if (!isLoggedIn || currentUser?.role === 'customer') return;
+    setOrdersLoading(true);
+    try {
+      const data = await fetchVendorOrders();
+      setVendorOrders(data.orders || []);
+    } catch (e) {
+      console.error('Failed to fetch vendor orders:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [isLoggedIn, currentUser?.role, fetchVendorOrders]);
+
+  useEffect(() => {
+    if (isLoggedIn && currentUser?.role !== 'customer') {
+      loadVendorOrders();
+    }
+  }, [isLoggedIn, currentUser?.role, loadVendorOrders]);
+
+  useEffect(() => {
+    if (activePage === 'Orders' && isLoggedIn && currentUser?.role !== 'customer') {
+      loadVendorOrders();
+    }
+  }, [activePage, isLoggedIn, currentUser?.role, loadVendorOrders]);
 
   // Dark Mode with localStorage persistence and system theme detection
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -225,6 +263,11 @@ export const App: React.FC = () => {
           onToggleDark={toggleDarkMode}
           fetchPublicProducts={fetchPublicProducts}
           fetchCategories={fetchCategories}
+          onPlaceOrder={placeCustomerOrder}
+          onFetchOrders={fetchCustomerOrders}
+          onApproveQuote={approveCustomerQuote}
+          onCancelOrder={cancelCustomerOrder}
+          onShowToast={showToast}
         />
         {/* Toast Notification */}
         {toastMessage && (
@@ -252,6 +295,7 @@ export const App: React.FC = () => {
         open={isMobileMenuOpen}
         close={() => setIsMobileMenuOpen(false)}
         alertsCount={alerts?.count || summary?.alerts_count || 0}
+        ordersCount={vendorOrders.filter((o) => o.status === 'New').length}
         shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
         ownerName={currentUser?.name || settings?.name}
         onGoToLanding={() => setViewMode('landing')}
@@ -305,6 +349,19 @@ export const App: React.FC = () => {
                 setQuickUpdateInitialTab('bill');
                 setIsQuickUpdateModalOpen(true);
               }}
+            />
+          ) : activePage === 'Orders' ? (
+            <FigmaOrders
+              orders={vendorOrders}
+              inventory={inventory}
+              isLoading={ordersLoading}
+              onRefresh={loadVendorOrders}
+              onUpdateItems={updateVendorOrderItems}
+              onSendQuote={sendVendorQuote}
+              onGenerateBill={generateVendorBill}
+              onUpdateStatus={updateVendorOrderStatus}
+              onMarkPaid={markVendorOrderPaid}
+              onShowToast={showToast}
             />
           ) : activePage === 'Inventory' ? (
             <FigmaInventory

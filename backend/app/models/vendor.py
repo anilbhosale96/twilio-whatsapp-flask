@@ -11,6 +11,8 @@ class Vendor(Base):
     shop_name = Column(String(100), nullable=True)
     category = Column(String(50), default="Grocery", nullable=False)
     role = Column(String(20), default="vendor", nullable=False)
+    gstin = Column(String(20), nullable=True)
+    address = Column(String(255), nullable=True)
     password_hash = Column(String(255), nullable=True)
     default_threshold = Column(Float, default=5.0, nullable=False)
     language = Column(String(10), default="en", nullable=False)

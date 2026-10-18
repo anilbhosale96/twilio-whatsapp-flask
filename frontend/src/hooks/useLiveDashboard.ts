@@ -8,7 +8,8 @@ import type {
   VendorSettings,
   ChatMessage,
   AuthUser,
-  ProductDiscoveryItem
+  ProductDiscoveryItem,
+  OrderData
 } from '../types';
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'offline';
@@ -587,6 +588,182 @@ export function useLiveDashboard() {
     return { success: false, reply: 'Failed to process message' };
   };
 
+  // --- Customer Ordering Methods ---
+  const placeCustomerOrder = useCallback(async (orderPayload: any, file?: File) => {
+    try {
+      let res: Response;
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('order_data', JSON.stringify(orderPayload));
+        res = await fetch('/api/customer/orders', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
+        });
+      } else {
+        res = await fetch('/api/customer/orders', {
+          method: 'POST',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(orderPayload)
+        });
+      }
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error placing order' };
+    }
+  }, [getAuthHeaders]);
+
+  const fetchCustomerOrders = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/customer/orders?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, orders: (data.orders || []) as OrderData[] };
+      }
+    } catch {}
+    return { success: false, orders: [] as OrderData[] };
+  }, [getAuthHeaders]);
+
+  const approveCustomerQuote = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/customer/orders/${orderId}/approve`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const cancelCustomerOrder = useCallback(async (orderId: string, reason?: string) => {
+    try {
+      const res = await fetch(`/api/customer/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ reason: reason || 'Cancelled by customer' })
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  // --- Vendor Orders Workspace Methods ---
+  const fetchVendorOrders = useCallback(async (statusFilter?: string, search?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (search) params.append('search', search);
+      const url = `/api/vendor/orders?_t=${Date.now()}${params.toString() ? '&' + params.toString() : ''}`;
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, orders: (data.orders || []) as OrderData[] };
+      }
+    } catch {}
+    return { success: false, orders: [] as OrderData[] };
+  }, [getAuthHeaders]);
+
+  const fetchVendorOrderDetail = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, order: data.order as OrderData };
+      }
+    } catch {}
+    return { success: false, order: null };
+  }, [getAuthHeaders]);
+
+  const updateVendorOrderItems = useCallback(async (orderId: string, items: any[], notes?: string) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}/items`, {
+        method: 'PUT',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ items, notes })
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const sendVendorQuote = useCallback(async (
+    orderId: string,
+    payload: { discount: number; tax_rate: number; delivery_charge: number; notes?: string }
+  ) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}/send-quote`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData, bill_number: data.bill_number };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const generateVendorBill = useCallback(async (
+    orderId: string,
+    payload: { bill_type: string; discount: number; tax_rate: number; delivery_charge: number; payment_method?: string; notes?: string }
+  ) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}/generate-bill`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData, bill_number: data.bill_number };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const updateVendorOrderStatus = useCallback(async (orderId: string, newStatus: string, notes?: string) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}/update-status`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status: newStatus, notes })
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const markVendorOrderPaid = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/vendor/orders/${orderId}/mark-paid`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, order: data.order as OrderData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
   // Setup Server-Sent Events (SSE)
   useEffect(() => {
     refreshAll();
@@ -667,6 +844,17 @@ export function useLiveDashboard() {
     refreshAll,
     fetchPublicProducts,
     fetchCategories,
+    placeCustomerOrder,
+    fetchCustomerOrders,
+    approveCustomerQuote,
+    cancelCustomerOrder,
+    fetchVendorOrders,
+    fetchVendorOrderDetail,
+    updateVendorOrderItems,
+    sendVendorQuote,
+    generateVendorBill,
+    updateVendorOrderStatus,
+    markVendorOrderPaid,
     addItem,
     deleteItem,
     patchItem,
