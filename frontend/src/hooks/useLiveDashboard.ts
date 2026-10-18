@@ -429,6 +429,29 @@ export function useLiveDashboard() {
     return false;
   };
 
+  // Direct message sending for automatic inventory update (WhatsApp or SMS)
+  const sendDirectMessage = async (text: string, channel: 'whatsapp' | 'sms' = 'whatsapp') => {
+    try {
+      let phoneToSend = currentUser?.phone || settings?.phone_raw || 'whatsapp:+919876543210';
+      const res = await fetch('/api/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          channel: channel,
+          vendor: phoneToSend
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        await refreshAll();
+        return { success: true, reply: data.reply as string, parsed_items: data.parsed_items };
+      }
+    } catch {}
+    return { success: false, reply: 'Failed to process message' };
+  };
+
   // Setup Server-Sent Events (SSE)
   useEffect(() => {
     refreshAll();
@@ -510,6 +533,7 @@ export function useLiveDashboard() {
     patchItem,
     updateVendorSettings,
     sendSimulationMessage,
+    sendDirectMessage,
     fetchInventory,
     fetchTransactions
   };

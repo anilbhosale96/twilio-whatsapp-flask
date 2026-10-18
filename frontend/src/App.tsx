@@ -42,7 +42,8 @@ export const App: React.FC = () => {
     deleteItem,
     patchItem,
     updateVendorSettings,
-    sendSimulationMessage
+    sendSimulationMessage,
+    sendDirectMessage
   } = useLiveDashboard();
 
   // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
@@ -129,12 +130,14 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async (msg: string): Promise<boolean> => {
-    const ok = await sendSimulationMessage(msg);
-    if (ok) {
-      showToast('WhatsApp update processed! Inventory updated.');
+  const handleSendMessage = async (msg: string, channel: 'whatsapp' | 'sms' = 'whatsapp'): Promise<boolean> => {
+    const res = await sendDirectMessage(msg, channel);
+    if (res.success) {
+      showToast(`${channel === 'sms' ? 'SMS' : 'WhatsApp'} message processed! Inventory updated.`);
+      return true;
     }
-    return ok;
+    showToast('Failed to process message.');
+    return false;
   };
 
   // Find active product from latest inventory data so updates reflect immediately
@@ -281,7 +284,17 @@ export const App: React.FC = () => {
               }}
             />
           ) : activePage === 'WhatsApp Activity' ? (
-            <FigmaWhatsAppActivity transactions={transactions} />
+            <FigmaWhatsAppActivity
+              transactions={transactions}
+              inventory={inventory}
+              onSendMessage={async (msg, ch) => {
+                const res = await sendDirectMessage(msg, ch);
+                if (res.success) {
+                  showToast(`${ch === 'sms' ? 'SMS' : 'WhatsApp'} message processed! Inventory updated.`);
+                }
+                return res;
+              }}
+            />
           ) : activePage === 'Transactions' ? (
             <FigmaTransactions transactions={transactions} />
           ) : activePage === 'Alerts' ? (

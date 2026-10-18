@@ -31,3 +31,39 @@ def test_webhook_command_help(client: TestClient):
     assert response.status_code == 200
     assert "Smart Stack AI Commands &amp; Help" in response.text or "Smart Stack AI Commands & Help" in response.text
 
+
+def test_sms_forwarder_webhook(client: TestClient, db_session: Session):
+    sender = "whatsapp:+919876543210"
+    payload = {
+        "from": sender,
+        "message": "15 Parle G aaya"
+    }
+    response = client.post("/api/sms", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "parle g" in data["reply"].lower()
+
+    item = db_session.query(Item).filter_by(vendor=sender, name="parle g").first()
+    assert item is not None
+    assert item.qty >= 15.0
+
+
+def test_direct_in_app_message(client: TestClient, db_session: Session):
+    sender = "whatsapp:+919876543210"
+    payload = {
+        "message": "20 Tata Salt aaya",
+        "channel": "whatsapp",
+        "vendor": sender
+    }
+    response = client.post("/api/message", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert "tata salt" in data["reply"].lower()
+
+    item = db_session.query(Item).filter_by(vendor=sender, name="tata salt").first()
+    assert item is not None
+    assert item.qty >= 20.0
+
+

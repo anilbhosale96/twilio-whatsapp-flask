@@ -17,3 +17,4 @@ services:
     volumes:
       - ./smart_stack_ai.db:/app/smart_stack_ai.db
     restart: unless-stopped
+

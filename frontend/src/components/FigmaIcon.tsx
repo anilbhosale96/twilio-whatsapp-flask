@@ -29,7 +29,8 @@ import {
   Sun,
   Moon,
   BarChart2,
-  FileText
+  FileText,
+  Copy
 } from 'lucide-react';
 
 interface FigmaIconProps {
@@ -121,6 +122,8 @@ export const FigmaIcon: React.FC<FigmaIconProps> = ({ name, size = 18, className
       return <BarChart2 {...props} />;
     case 'report':
       return <FileText {...props} />;
+    case 'copy':
+      return <Copy {...props} />;
     default:
       return <Package {...props} />;
   }

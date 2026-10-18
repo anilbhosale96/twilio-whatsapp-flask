@@ -19,3 +19,4 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_NUMBER
         value: whatsapp:+14155238886
+
