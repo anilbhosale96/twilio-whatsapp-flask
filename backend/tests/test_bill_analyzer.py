@@ -66,3 +66,4 @@ def test_apply_bill_to_inventory(client: TestClient, db_session: Session):
     tx = db_session.query(Transaction).filter_by(vendor=vendor, item_name="test bill biscuit").first()
     assert tx is not None
     assert "[Bill Received" in tx.raw_text
+

@@ -7,7 +7,8 @@ import type {
   ReportsData,
   VendorSettings,
   ChatMessage,
-  AuthUser
+  AuthUser,
+  ProductDiscoveryItem
 } from '../types';
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'offline';
@@ -143,6 +144,11 @@ export function useLiveDashboard() {
   }, [getAuthHeaders]);
 
   const refreshAll = useCallback(async () => {
+    if (currentUser?.role === 'customer') {
+      setStatus('connected');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -162,7 +168,7 @@ export function useLiveDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [fetchSummary, fetchInventory, fetchTransactions, fetchAlerts, fetchReports, reportRange, fetchSettings, fetchChatPreview]);
+  }, [currentUser?.role, fetchSummary, fetchInventory, fetchTransactions, fetchAlerts, fetchReports, reportRange, fetchSettings, fetchChatPreview]);
 
   // Login handler
   const login = async (phone: string, password: string): Promise<{ success: boolean; message?: string }> => {
@@ -187,10 +193,14 @@ export function useLiveDashboard() {
       if (!res.ok) {
         return { success: false, message: data.detail || 'Login failed' };
       }
+      const vendorUser: AuthUser = {
+        ...data.vendor,
+        role: 'vendor'
+      };
       localStorage.setItem('smartstock_token', data.access_token);
-      localStorage.setItem('smartstock_user', JSON.stringify(data.vendor));
+      localStorage.setItem('smartstock_user', JSON.stringify(vendorUser));
       setAuthToken(data.access_token);
-      setCurrentUser(data.vendor);
+      setCurrentUser(vendorUser);
       return { success: true };
     } catch (err: any) {
       const msg = err?.message || '';
@@ -203,7 +213,7 @@ export function useLiveDashboard() {
     }
   };
 
-  // Register handler
+  // Register handler (Vendor)
   const register = async (regData: {
     phone: string;
     password: string;
@@ -233,10 +243,14 @@ export function useLiveDashboard() {
       if (!res.ok) {
         return { success: false, message: data.detail || 'Registration failed' };
       }
+      const vendorUser: AuthUser = {
+        ...data.vendor,
+        role: 'vendor'
+      };
       localStorage.setItem('smartstock_token', data.access_token);
-      localStorage.setItem('smartstock_user', JSON.stringify(data.vendor));
+      localStorage.setItem('smartstock_user', JSON.stringify(vendorUser));
       setAuthToken(data.access_token);
-      setCurrentUser(data.vendor);
+      setCurrentUser(vendorUser);
       return { success: true };
     } catch (err: any) {
       const msg = err?.message || '';
@@ -247,6 +261,127 @@ export function useLiveDashboard() {
           : (msg || 'Unable to connect to server.')
       };
     }
+  };
+
+  // Customer Login Handler
+  const loginCustomer = async (phone: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await fetch('/api/auth/customer/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, message: data.detail || 'Customer login failed' };
+      }
+
+      const custUser: AuthUser = {
+        phone: data.customer?.phone || data.user?.phone,
+        name: data.customer?.name || data.user?.name,
+        email: data.customer?.email || data.user?.email,
+        city: data.customer?.city || data.user?.city,
+        address: data.customer?.address || data.user?.address,
+        role: 'customer'
+      };
+
+      localStorage.setItem('smartstock_token', data.access_token);
+      localStorage.setItem('smartstock_user', JSON.stringify(custUser));
+      setAuthToken(data.access_token);
+      setCurrentUser(custUser);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Server connection error' };
+    }
+  };
+
+  // Customer Registration Handler
+  const registerCustomer = async (data: {
+    phone: string;
+    password: string;
+    name: string;
+    email?: string;
+    city?: string;
+    address?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await fetch('/api/auth/customer/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const body = await res.json();
+      if (!res.ok) {
+        return { success: false, message: body.detail || 'Customer registration failed' };
+      }
+
+      const custUser: AuthUser = {
+        phone: body.customer?.phone || body.user?.phone,
+        name: body.customer?.name || body.user?.name,
+        email: body.customer?.email || body.user?.email,
+        city: body.customer?.city || body.user?.city,
+        address: body.customer?.address || body.user?.address,
+        role: 'customer'
+      };
+
+      localStorage.setItem('smartstock_token', body.access_token);
+      localStorage.setItem('smartstock_user', JSON.stringify(custUser));
+      setAuthToken(body.access_token);
+      setCurrentUser(custUser);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Server connection error' };
+    }
+  };
+
+  // Public Product Search & Discovery
+  const fetchPublicProducts = async (params: {
+    q?: string;
+    category?: string;
+    in_stock_only?: boolean;
+    min_price?: number;
+    max_price?: number;
+    sort?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    success: boolean;
+    products: ProductDiscoveryItem[];
+    total: number;
+    page: number;
+    total_pages: number;
+  }> => {
+    try {
+      const qs = new URLSearchParams();
+      if (params.q) qs.append('q', params.q);
+      if (params.category && params.category !== 'All') qs.append('category', params.category);
+      if (params.in_stock_only) qs.append('in_stock_only', 'true');
+      if (params.min_price !== undefined && params.min_price !== null) qs.append('min_price', String(params.min_price));
+      if (params.max_price !== undefined && params.max_price !== null) qs.append('max_price', String(params.max_price));
+      if (params.sort) qs.append('sort', params.sort);
+      if (params.page) qs.append('page', String(params.page));
+      if (params.limit) qs.append('limit', String(params.limit));
+
+      const res = await fetch(`/api/products?${qs.toString()}`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return { success: false, products: [], total: 0, page: 1, total_pages: 1 };
+  };
+
+  // Product Categories List
+  const fetchCategories = async (): Promise<Array<{ id: string; name: string; count: number }>> => {
+    try {
+      const res = await fetch('/api/products/categories');
+      if (res.ok) {
+        const data = await res.json();
+        return data.categories || [];
+      }
+    } catch {}
+    return [];
   };
 
   // Logout handler
@@ -526,8 +661,12 @@ export function useLiveDashboard() {
     isLoggedIn: Boolean(authToken),
     login,
     register,
+    loginCustomer,
+    registerCustomer,
     logout,
     refreshAll,
+    fetchPublicProducts,
+    fetchCategories,
     addItem,
     deleteItem,
     patchItem,

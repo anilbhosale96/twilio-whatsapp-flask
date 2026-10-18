@@ -151,12 +151,43 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export type UserRole = 'customer' | 'vendor' | 'admin';
+
 export interface AuthUser {
   phone: string;
   name: string;
-  shop_name: string;
-  category: string;
+  role?: UserRole;
+  shop_name?: string;
+  category?: string;
+  email?: string;
+  city?: string;
+  address?: string;
   language?: string;
 }
+
+export interface ProductStoreInfo {
+  name: string;
+  owner: string;
+  category: string;
+  phone_masked: string;
+  location: string;
+}
+
+export interface ProductDiscoveryItem {
+  id: number;
+  name: string;
+  unit: string;
+  qty: number;
+  threshold: number;
+  price: number | null;
+  price_formatted: string;
+  stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  is_in_stock: boolean;
+  category: string;
+  image_url: string;
+  store: ProductStoreInfo;
+  updated_at?: string;
+}
+
 
 

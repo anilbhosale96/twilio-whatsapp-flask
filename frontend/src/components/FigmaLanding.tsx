@@ -5,6 +5,7 @@ interface FigmaLandingProps {
   onOpenApp: () => void;
   onOpenLogin: () => void;
   onOpenRegister: () => void;
+  onOpenCustomerPortal?: () => void;
   isDark: boolean;
   onToggleDark: () => void;
   onOpenPrivacy: () => void;
@@ -15,6 +16,7 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
   onOpenApp,
   onOpenLogin,
   onOpenRegister,
+  onOpenCustomerPortal,
   isDark,
   onToggleDark,
   onOpenPrivacy,
@@ -52,6 +54,16 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
             <span>{isDark ? "Light" : "Dark"}</span>
           </button>
 
+          {onOpenCustomerPortal && (
+            <button
+              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1.5"
+              onClick={onOpenCustomerPortal}
+            >
+              <FigmaIcon name="search" size={13} />
+              <span>Customer Portal</span>
+            </button>
+          )}
+
           <button className="login-link cursor-pointer" onClick={onOpenLogin}>
             Log in
           </button>
@@ -78,13 +90,22 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
               No complicated software, no training needed.
             </p>
 
-            <div className="hero-actions">
+            <div className="hero-actions flex flex-wrap gap-2.5">
               <button className="btn btn-primary cursor-pointer" onClick={onOpenApp}>
-                Open Live Store App
+                Shopkeeper App
                 <FigmaIcon name="arrow" size={16} />
               </button>
+              {onOpenCustomerPortal && (
+                <button
+                  className="btn btn-secondary cursor-pointer flex items-center gap-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  onClick={onOpenCustomerPortal}
+                >
+                  <FigmaIcon name="search" size={16} />
+                  <span>Browse Products as Customer</span>
+                </button>
+              )}
               <button className="btn btn-secondary cursor-pointer" onClick={onOpenLogin}>
-                Log in to Account
+                Log in
               </button>
             </div>
 

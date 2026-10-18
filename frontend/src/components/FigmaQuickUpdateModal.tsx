@@ -706,3 +706,4 @@ export const FigmaQuickUpdateModal: React.FC<FigmaQuickUpdateModalProps> = ({
     </div>
   );
 };
+

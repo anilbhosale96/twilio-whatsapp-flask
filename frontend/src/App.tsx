@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLiveDashboard } from './hooks/useLiveDashboard';
 import { FigmaLanding } from './components/FigmaLanding';
 import { FigmaAuth } from './components/FigmaAuth';
+import { CustomerDashboard } from './components/CustomerDashboard';
 import { FigmaSidebar } from './components/FigmaSidebar';
 import type { FigmaPage } from './components/FigmaSidebar';
 import { FigmaTopbar } from './components/FigmaTopbar';
@@ -38,6 +39,10 @@ export const App: React.FC = () => {
     isLoggedIn,
     login,
     register,
+    loginCustomer,
+    registerCustomer,
+    fetchPublicProducts,
+    fetchCategories,
     logout,
     addItem,
     deleteItem,
@@ -57,6 +62,7 @@ export const App: React.FC = () => {
     }
   });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authAccountType, setAuthAccountType] = useState<'vendor' | 'customer'>('vendor');
   const [activePage, setActivePage] = useState<FigmaPage>('Dashboard');
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -112,7 +118,7 @@ export const App: React.FC = () => {
 
   const handleLoginSuccess = () => {
     setViewMode('app');
-    showToast('Welcome to your shop dashboard!');
+    showToast('Login successful!');
   };
 
   const [activeUpdateMessage, setActiveUpdateMessage] = useState<string>(
@@ -153,7 +159,19 @@ export const App: React.FC = () => {
   if (viewMode === 'landing') {
     return (
       <FigmaLanding
-        onOpenApp={() => setViewMode(isLoggedIn ? 'app' : 'auth')}
+        onOpenApp={() => {
+          setAuthAccountType('vendor');
+          setViewMode(isLoggedIn ? 'app' : 'auth');
+        }}
+        onOpenCustomerPortal={() => {
+          if (isLoggedIn && currentUser?.role === 'customer') {
+            setViewMode('app');
+          } else {
+            setAuthAccountType('customer');
+            setAuthMode('login');
+            setViewMode('auth');
+          }
+        }}
         onOpenLogin={() => {
           setAuthMode('login');
           setViewMode('auth');
@@ -182,8 +200,12 @@ export const App: React.FC = () => {
       <FigmaAuth
         mode={authMode}
         setMode={(m) => setAuthMode(m)}
+        accountType={authAccountType}
+        setAccountType={setAuthAccountType}
         onLogin={login}
         onRegister={register}
+        onCustomerLogin={loginCustomer}
+        onCustomerRegister={registerCustomer}
         onDone={handleLoginSuccess}
         onBack={() => setViewMode('landing')}
         isDark={isDark}
@@ -192,7 +214,32 @@ export const App: React.FC = () => {
     );
   }
 
-  // 3. Live App Shell View (Matching Figma https://flash-fruit-47779733.figma.site)
+  // 3. Customer Dashboard View (Role = Customer)
+  if (currentUser?.role === 'customer') {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b1120]">
+        <CustomerDashboard
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          isDark={isDark}
+          onToggleDark={toggleDarkMode}
+          fetchPublicProducts={fetchPublicProducts}
+          fetchCategories={fetchCategories}
+        />
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="toast">
+            <span>
+              <FigmaIcon name="check" size={16} />
+            </span>
+            <span>{toastMessage}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 4. Live App Shell View (Role = Vendor / Admin, Matching Figma https://flash-fruit-47779733.figma.site)
   return (
     <div className="app-shell min-h-screen">
       {/* Sidebar with Log Out Action */}

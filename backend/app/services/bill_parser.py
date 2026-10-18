@@ -265,3 +265,4 @@ def parse_full_bill_text(text: str, override_type: Optional[str] = None) -> Dict
         "total_amount": round(total_amount, 2),
         "raw_lines_count": len(lines)
     }
+

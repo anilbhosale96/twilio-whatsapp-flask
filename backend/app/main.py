@@ -11,14 +11,17 @@ from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
 from app.api.auth import router as auth_router
 from app.api.bill_analyzer import router as bill_router
+from app.api.products import router as products_router
 import asyncio
 from app.services.broadcaster import broadcaster
 from sqlalchemy import text
 
 def ensure_db_migrations():
-    """Ensures newly added columns exist in existing SQLite databases."""
+    """Ensures newly added columns exist in existing SQLite databases and seeds demo customer."""
+    from app.core.auth_security import hash_password
     try:
         with engine.connect() as conn:
+            # 1. Vendors table columns
             res = conn.execute(text("PRAGMA table_info(vendors)")).fetchall()
             col_names = [r[1] for r in res]
             if "password_hash" not in col_names:
@@ -27,8 +30,44 @@ def ensure_db_migrations():
                 conn.execute(text("ALTER TABLE vendors ADD COLUMN shop_name VARCHAR(100)"))
             if "category" not in col_names:
                 conn.execute(text("ALTER TABLE vendors ADD COLUMN category VARCHAR(50) DEFAULT 'Grocery'"))
+            if "role" not in col_names:
+                conn.execute(text("ALTER TABLE vendors ADD COLUMN role VARCHAR(20) DEFAULT 'vendor'"))
+
+            # 2. Items table columns
+            res_items = conn.execute(text("PRAGMA table_info(items)")).fetchall()
+            item_cols = [r[1] for r in res_items]
+            if "category" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN category VARCHAR(50)"))
+            if "is_public" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN is_public BOOLEAN DEFAULT 1"))
+            if "image_url" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN image_url VARCHAR(255)"))
+
+            # 3. Seed demo customer for seamless testability
+            demo_cust_phone = "whatsapp:+919999988888"
+            existing_cust = conn.execute(
+                text("SELECT phone FROM customers WHERE phone = :p"),
+                {"p": demo_cust_phone}
+            ).fetchone()
+            if not existing_cust:
+                demo_hash = hash_password("password123")
+                conn.execute(
+                    text("""
+                        INSERT INTO customers (phone, name, email, city, address, password_hash, created_at)
+                        VALUES (:phone, :name, :email, :city, :address, :password_hash, CURRENT_TIMESTAMP)
+                    """),
+                    {
+                        "phone": demo_cust_phone,
+                        "name": "Amit Verma",
+                        "email": "amit.verma@example.com",
+                        "city": "Pune",
+                        "address": "Flat 402, Shivajinagar, Pune",
+                        "password_hash": demo_hash
+                    }
+                )
+
             conn.commit()
-    except Exception:
+    except Exception as e:
         pass
 
 @asynccontextmanager
@@ -71,6 +110,7 @@ app.include_router(auth_router)
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
 app.include_router(bill_router)
+app.include_router(products_router)
 
 @app.get("/health", tags=["System"])
 def health_check() -> dict:

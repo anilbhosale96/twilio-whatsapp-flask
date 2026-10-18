@@ -16,6 +16,9 @@ class Item(Base):
     qty = Column(Float, default=0.0, nullable=False)
     threshold = Column(Float, default=5.0, nullable=False)
     price = Column(Float, nullable=True)
+    category = Column(String(50), nullable=True)
+    is_public = Column(Boolean, default=True, nullable=False)
+    image_url = Column(String(255), nullable=True)
     reordered = Column(Boolean, default=False, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=get_ist_now, onupdate=get_ist_now, nullable=False)
 
