@@ -172,6 +172,17 @@ export function useLiveDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password })
       });
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return {
+          success: false,
+          message: !res.ok
+            ? `Server error (${res.status}): Please verify the backend server is running on port 8000.`
+            : 'Invalid server response format'
+        };
+      }
+
       const data = await res.json();
       if (!res.ok) {
         return { success: false, message: data.detail || 'Login failed' };
@@ -182,7 +193,13 @@ export function useLiveDashboard() {
       setCurrentUser(data.vendor);
       return { success: true };
     } catch (err: any) {
-      return { success: false, message: err?.message || 'Unable to connect to server.' };
+      const msg = err?.message || '';
+      return {
+        success: false,
+        message: msg.includes('JSON') || msg.includes('Unexpected')
+          ? 'Backend server not responding or proxy error. Please verify the backend is running.'
+          : (msg || 'Unable to connect to server.')
+      };
     }
   };
 
@@ -201,6 +218,17 @@ export function useLiveDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(regData)
       });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return {
+          success: false,
+          message: !res.ok
+            ? `Server error (${res.status}): Please verify the backend server is running on port 8000.`
+            : 'Invalid server response format'
+        };
+      }
+
       const data = await res.json();
       if (!res.ok) {
         return { success: false, message: data.detail || 'Registration failed' };
@@ -211,7 +239,13 @@ export function useLiveDashboard() {
       setCurrentUser(data.vendor);
       return { success: true };
     } catch (err: any) {
-      return { success: false, message: err?.message || 'Unable to connect to server.' };
+      const msg = err?.message || '';
+      return {
+        success: false,
+        message: msg.includes('JSON') || msg.includes('Unexpected')
+          ? 'Backend server not responding or proxy error. Please verify the backend is running.'
+          : (msg || 'Unable to connect to server.')
+      };
     }
   };
 
@@ -244,6 +278,12 @@ export function useLiveDashboard() {
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data)
       });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return { success: false, message: `Server error (${res.status})` };
+      }
+
       const result = await res.json();
       if (!res.ok) {
         return { success: false, message: result.detail || 'Failed to add item' };

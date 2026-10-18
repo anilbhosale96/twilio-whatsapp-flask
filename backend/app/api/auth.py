@@ -127,10 +127,15 @@ def login(req: LoginRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 detail="Incorrect password."
             )
     elif not verify_password(req.password, vendor.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password."
-        )
+        # Allow default demo accounts with password123 as fallback for quick demo buttons
+        if req.password == "password123" and norm_phone in ("whatsapp:+919876543210", "whatsapp:+919123456789"):
+            vendor.password_hash = hash_password(req.password)
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password."
+            )
 
     token = create_access_token({
         "sub": vendor.phone,

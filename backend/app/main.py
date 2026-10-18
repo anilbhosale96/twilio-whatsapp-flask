@@ -61,6 +61,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-API-KEY"],
 )
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
 # 4. Routers
 app.include_router(auth_router)
 app.include_router(webhook_router)
@@ -73,3 +76,9 @@ def health_check() -> dict:
         "app": "Smart Stack AI",
         "timestamp": get_ist_now().isoformat()
     }
+
+# 5. Serve frontend build if present (for direct port 8000 and ngrok access)
+_frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+
