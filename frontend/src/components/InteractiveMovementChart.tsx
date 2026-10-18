@@ -474,3 +474,4 @@ export const InteractiveMovementChart: React.FC<InteractiveMovementChartProps> =
     </div>
   );
 };
+

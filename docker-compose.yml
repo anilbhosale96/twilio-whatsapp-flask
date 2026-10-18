@@ -1,0 +1,19 @@
+services:
+  smartstock-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartstock_production
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:///../smart_stack_ai.db
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER:-whatsapp:+14155238886}
+    volumes:
+      - ./smart_stack_ai.db:/app/smart_stack_ai.db
+    restart: unless-stopped

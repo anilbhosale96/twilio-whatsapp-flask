@@ -63,6 +63,7 @@ app.add_middleware(
 
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # 4. Routers
 app.include_router(auth_router)
@@ -77,8 +78,20 @@ def health_check() -> dict:
         "timestamp": get_ist_now().isoformat()
     }
 
-# 5. Serve frontend build if present (for direct port 8000 and ngrok access)
+# 5. Serve frontend build if present (for direct port 8000, ngrok, and production deployment)
 _frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+    _assets_dir = _frontend_dist / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa_fallback(full_path: str):
+        # Serve exact file if it exists (e.g. favicon.svg)
+        target = _frontend_dist / full_path
+        if full_path and target.is_file():
+            return FileResponse(target)
+        # Otherwise return index.html for client-side routing
+        return FileResponse(_frontend_dist / "index.html")
+
 
