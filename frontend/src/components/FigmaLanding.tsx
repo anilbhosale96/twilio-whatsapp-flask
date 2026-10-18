@@ -103,58 +103,65 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
 
           {/* Interactive Floating Visual */}
           <div className="hero-visual">
+            {/* Left: Floating WhatsApp Conversation Phone Card */}
             <div className="phone-card">
-              <div className="wa-head">
-                <span className="wa-round">
+              <div className="phone-head">
+                <span className="wa-avatar">
                   <FigmaIcon name="whatsapp" size={18} />
                 </span>
-                <div>
+                <div className="flex flex-col">
                   <b>SmartStock AI</b>
                   <small>Online · Typically replies in seconds</small>
                 </div>
+                <FigmaIcon name="more" size={16} className="text-neutral-400 ml-auto" />
               </div>
 
-              <div className="wa-bubble incoming">
-                <p>Bhai 20 Parle G aur 10 Tata Salt aaya.</p>
-                <span>
-                  9:42 AM <FigmaIcon name="check" size={12} />
-                </span>
-              </div>
+              <div className="chat-area">
+                <div className="chat-date">TODAY</div>
 
-              <div className="wa-bubble outgoing">
-                <span className="ai-tag">
-                  <FigmaIcon name="sparkle" size={12} /> SmartStock AI
-                </span>
-                <p>Stock updated successfully!</p>
-                <div className="bubble-items">
+                <div className="chat-bubble">
+                  Bhai 20 Parle G aur 10 Tata Salt aaya.
+                  <span>
+                    9:42 AM <FigmaIcon name="check" size={11} />
+                  </span>
+                </div>
+
+                <div className="ai-reply">
+                  <span className="tiny-logo">
+                    <FigmaIcon name="sparkle" size={13} />
+                  </span>
                   <div>
-                    <span>Parle G</span>
-                    <b>+20 pkts (Total: 42)</b>
-                  </div>
-                  <div>
-                    <span>Tata Salt</span>
-                    <b>+10 pkts (Total: 18)</b>
+                    <b>Stock updated successfully!</b>
+                    <p>
+                      <span>Parle G (100g)</span>
+                      <strong>+20 pkts (Total: 42)</strong>
+                    </p>
+                    <p>
+                      <span>Tata Salt (1kg)</span>
+                      <strong>+10 pkts (Total: 18)</strong>
+                    </p>
+                    <small>9:42 AM</small>
                   </div>
                 </div>
-                <span>9:42 AM</span>
               </div>
             </div>
 
-            <div className="mini-dash">
-              <div className="mini-head">
-                <div className="logo">
+            {/* Right: Floating Mini Store Dashboard Card */}
+            <div className="float-dashboard">
+              <div className="fd-head">
+                <div className="logo flex items-center space-x-1.5">
                   <span className="logo-mark">
-                    <FigmaIcon name="box" size={14} className="text-white" />
+                    <FigmaIcon name="box" size={13} className="text-white" />
                   </span>
                   <span>Sharma General Store</span>
                 </div>
                 <span className="live-dot">Live SSE</span>
               </div>
 
-              <div className="mini-stats">
+              <div className="fd-row">
                 <div>
                   <small>TOTAL STOCK</small>
-                  <b>387 units</b>
+                  <b>387</b>
                 </div>
                 <div>
                   <small>LOW STOCK</small>
@@ -162,17 +169,23 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
                 </div>
               </div>
 
-              <div className="mini-item">
-                <span>Parle G 100g</span>
-                <span className="pill success">42 packets</span>
+              <div className="mini-bars">
+                <i style={{ height: '35%' }}></i>
+                <i style={{ height: '55%' }}></i>
+                <i style={{ height: '40%' }}></i>
+                <i style={{ height: '70%' }}></i>
+                <i style={{ height: '90%' }}></i>
+                <i style={{ height: '80%' }}></i>
+                <i style={{ height: '100%' }}></i>
               </div>
-              <div className="mini-item">
-                <span>Tata Salt 1kg</span>
-                <span className="pill success">18 packets</span>
-              </div>
-              <div className="mini-item">
-                <span>Fortune Sunlite Oil</span>
-                <span className="pill warning">8 L (Low)</span>
+              <div className="chart-labels">
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+                <span>Sun</span>
               </div>
             </div>
           </div>
