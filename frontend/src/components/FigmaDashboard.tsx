@@ -16,6 +16,7 @@ interface FigmaDashboardProps {
   onConfirmUpdate: (message?: string) => void;
   onSendMessage: (msg: string) => Promise<boolean>;
   latestMessageText?: string;
+  onOpenBillModal?: () => void;
 }
 
 export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
@@ -28,7 +29,8 @@ export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
   onSelectProduct,
   onConfirmUpdate,
   onSendMessage,
-  latestMessageText
+  latestMessageText,
+  onOpenBillModal
 }) => {
   const lowItems = inventory.filter((item) => item.qty <= item.threshold);
 
@@ -105,6 +107,7 @@ export const FigmaDashboard: React.FC<FigmaDashboardProps> = ({
         onConfirm={onConfirmUpdate}
         onSendMessage={onSendMessage}
         latestMessageText={latestMessageText}
+        onOpenBillModal={onOpenBillModal}
       />
 
       {/* Dashboard Grid: Movement Chart & Low Stock */}

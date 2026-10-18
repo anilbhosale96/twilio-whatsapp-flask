@@ -10,6 +10,7 @@ from app.core.middleware import SecurityHeadersMiddleware, RateLimitMiddleware
 from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
 from app.api.auth import router as auth_router
+from app.api.bill_analyzer import router as bill_router
 import asyncio
 from app.services.broadcaster import broadcaster
 from sqlalchemy import text
@@ -69,6 +70,7 @@ from fastapi.responses import FileResponse
 app.include_router(auth_router)
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
+app.include_router(bill_router)
 
 @app.get("/health", tags=["System"])
 def health_check() -> dict:

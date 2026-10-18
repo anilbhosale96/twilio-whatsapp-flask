@@ -16,6 +16,7 @@ import { FigmaReports } from './components/FigmaReports';
 import { FigmaAIAssistant } from './components/FigmaAIAssistant';
 import { FigmaSettings } from './components/FigmaSettings';
 import { FigmaConfirmModal } from './components/FigmaConfirmModal';
+import { FigmaQuickUpdateModal } from './components/FigmaQuickUpdateModal';
 import { FigmaBottomNav } from './components/FigmaBottomNav';
 import { PrivacyAndTerms } from './components/PrivacyAndTerms';
 import { FigmaIcon } from './components/FigmaIcon';
@@ -43,7 +44,8 @@ export const App: React.FC = () => {
     patchItem,
     updateVendorSettings,
     sendSimulationMessage,
-    sendDirectMessage
+    sendDirectMessage,
+    refreshAll
   } = useLiveDashboard();
 
   // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
@@ -59,6 +61,8 @@ export const App: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isQuickUpdateModalOpen, setIsQuickUpdateModalOpen] = useState(false);
+  const [quickUpdateInitialTab, setQuickUpdateInitialTab] = useState<'bill' | 'voice'>('bill');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Dark Mode with localStorage persistence and system theme detection
@@ -214,8 +218,8 @@ export const App: React.FC = () => {
           pageTitle={selectedProduct ? selectedProduct.name : activePage}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onQuickUpdate={() => {
-            setActivePage('Dashboard');
-            setSelectedProduct(null);
+            setQuickUpdateInitialTab('bill');
+            setIsQuickUpdateModalOpen(true);
           }}
           isDark={isDark}
           onToggleDark={toggleDarkMode}
@@ -250,6 +254,10 @@ export const App: React.FC = () => {
               onConfirmUpdate={handleOpenConfirmModal}
               onSendMessage={handleSendMessage}
               latestMessageText={chatPreview.latest?.incoming_text}
+              onOpenBillModal={() => {
+                setQuickUpdateInitialTab('bill');
+                setIsQuickUpdateModalOpen(true);
+              }}
             />
           ) : activePage === 'Inventory' ? (
             <FigmaInventory
@@ -369,6 +377,24 @@ export const App: React.FC = () => {
         message={activeUpdateMessage}
         inventory={inventory}
         productName={activeUpdateMessage}
+      />
+
+      {/* Bill Scanner & Quick Voice Update Modal */}
+      <FigmaQuickUpdateModal
+        isOpen={isQuickUpdateModalOpen}
+        initialTab={quickUpdateInitialTab}
+        onClose={() => setIsQuickUpdateModalOpen(false)}
+        onSuccess={(msg) => {
+          showToast(msg);
+          refreshAll();
+        }}
+        onSendMessage={async (msg, ch) => {
+          const res = await sendDirectMessage(msg, ch);
+          if (res.success) {
+            showToast(`${ch === 'sms' ? 'SMS' : 'WhatsApp'} message processed! Inventory updated.`);
+          }
+          return res;
+        }}
       />
 
       {/* Toast Notification */}

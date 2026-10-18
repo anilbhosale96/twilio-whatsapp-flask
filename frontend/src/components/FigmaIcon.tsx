@@ -30,7 +30,9 @@ import {
   Moon,
   BarChart2,
   FileText,
-  Copy
+  Copy,
+  Upload,
+  Receipt
 } from 'lucide-react';
 
 interface FigmaIconProps {
@@ -124,6 +126,10 @@ export const FigmaIcon: React.FC<FigmaIconProps> = ({ name, size = 18, className
       return <FileText {...props} />;
     case 'copy':
       return <Copy {...props} />;
+    case 'upload':
+      return <Upload {...props} />;
+    case 'receipt':
+      return <Receipt {...props} />;
     default:
       return <Package {...props} />;
   }
