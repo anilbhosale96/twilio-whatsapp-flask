@@ -67,3 +67,4 @@ def decode_barcode_from_image(image_bytes: bytes) -> List[Dict[str, Any]]:
             break
 
     return results
+

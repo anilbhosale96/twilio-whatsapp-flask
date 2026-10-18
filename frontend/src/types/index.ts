@@ -228,6 +228,7 @@ export interface BillData {
   payment_method?: string;
   vendor_gstin?: string;
   has_pdf: boolean;
+  access_token?: string;
 }
 
 export interface OrderData {
@@ -330,6 +331,7 @@ export interface VendorBillData {
   vendor_gstin?: string;
   notes?: string;
   has_pdf: boolean;
+  items_count?: number;
   items: VendorBillItem[];
   created_at?: string;
   updated_at?: string;

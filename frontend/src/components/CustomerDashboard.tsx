@@ -53,7 +53,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   onApproveQuote,
   onCancelOrder,
   onFetchCustomerBills,
-  onFetchCustomerBillDetail: _onFetchCustomerBillDetail,
+  onFetchCustomerBillDetail,
   onShowToast
 }) => {
   // Navigation: 'catalog' vs 'orders' vs 'bills'
@@ -208,6 +208,20 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
       loadBills();
     }
   }, [activeTab, loadBills]);
+
+  const handleOpenBillModal = async (bill: VendorBillData) => {
+    setSelectedBillForModal(bill);
+    if ((!bill.items || bill.items.length === 0) && onFetchCustomerBillDetail) {
+      try {
+        const res = await onFetchCustomerBillDetail(bill.id);
+        if (res.success && res.bill) {
+          setSelectedBillForModal(res.bill);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
 
   // Cart operations
   const handleAddToCart = (product: ProductDiscoveryItem) => {
@@ -587,30 +601,53 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                         </div>
 
                         {/* Items preview */}
-                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
-                          <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
-                            <span>{order.items?.length || 0} items requested</span>
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-2">
+                          <div className="flex justify-between items-center font-semibold text-slate-700 dark:text-slate-300">
+                            <span>
+                              {order.items && order.items.length > 0
+                                ? `${order.items.length} ${order.items.length === 1 ? 'item' : 'items'} requested`
+                                : 'Custom Note Request'}
+                            </span>
                             <span className="text-sm font-bold text-slate-900 dark:text-white">
-                              Total: ₹{order.total_amount ? order.total_amount.toFixed(2) : '0.00'}
+                              {order.total_amount && order.total_amount > 0 ? (
+                                `Total: ₹${order.total_amount.toFixed(2)}`
+                              ) : (
+                                <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">
+                                  Price Pending
+                                </span>
+                              )}
                             </span>
                           </div>
 
                           {order.raw_text && (
-                            <p className="text-[11px] text-slate-500 italic line-clamp-2">
-                              “{order.raw_text}”
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                              📝 “{order.raw_text}”
                             </p>
                           )}
 
-                          <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                            {order.items?.map((it, idx) => (
-                              <li key={idx} className="flex justify-between">
-                                <span className="truncate max-w-[200px]">• {it.product_name}</span>
-                                <span>
-                                  {it.qty} {it.unit} {it.unit_price ? `· ₹${it.unit_price}` : '(Price Pending)'}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          {order.status === 'Awaiting Price' && (
+                            <div className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-200/50 flex items-center gap-1.5 font-medium">
+                              <span>⏳</span>
+                              <span>Shopkeeper is reviewing your items and preparing price quotation.</span>
+                            </div>
+                          )}
+
+                          {order.items && order.items.length > 0 ? (
+                            <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                              {order.items.map((it, idx) => (
+                                <li key={idx} className="flex justify-between items-center">
+                                  <span className="truncate max-w-[200px] font-medium">• {it.product_name}</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {it.qty} {it.unit} {it.unit_price ? `· ₹${it.unit_price}` : '(Quote Pending)'}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 pt-1">
+                              Awaiting shopkeeper line item confirmation.
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -618,7 +655,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                         {latestBill?.has_pdf ? (
                           <a
-                            href={`/api/orders/${order.id}/download-pdf`}
+                            href={`/api/orders/${order.id}/download-pdf${latestBill.access_token ? `?token=${encodeURIComponent(latestBill.access_token)}` : ''}`}
                             target="_blank"
                             rel="noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold hover:bg-blue-100 flex items-center gap-1.5 shadow-xs"
@@ -747,15 +784,15 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                           🏪 {bill.vendor_name || 'Neighborhood Store'}
                         </b>
                         <span className="text-[11px] text-slate-500">
-                          Date: {new Date(bill.created_at || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          Date: {new Date(bill.created_at || bill.issue_date || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
 
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
                         <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
-                          <span>{bill.items?.length || 0} line items</span>
+                          <span>{(bill.items?.length ?? bill.items_count) || 0} line items</span>
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white">
-                            Total: ₹{Number(bill.grand_total || 0).toFixed(2)}
+                            Total: ₹{Number(bill.final_total ?? bill.grand_total ?? 0).toFixed(2)}
                           </span>
                         </div>
                         {bill.amount_paid > 0 && (
@@ -776,7 +813,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() => setSelectedBillForModal(bill)}
+                        onClick={() => handleOpenBillModal(bill)}
                         className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
                       >
                         View Items
@@ -1415,7 +1452,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
 
             <div className="text-xs space-y-2">
               <div className="flex justify-between text-slate-500">
-                <span>Date: {new Date(selectedBillForModal.created_at || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span>Date: {new Date(selectedBillForModal.created_at || selectedBillForModal.issue_date || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 <span className="uppercase font-bold text-emerald-600">{selectedBillForModal.status}</span>
               </div>
               {selectedBillForModal.vendor_address && (
@@ -1435,17 +1472,27 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {selectedBillForModal.items?.map((it, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="p-2.5 font-medium text-slate-900 dark:text-white">
-                        {it.product_name}
-                        {it.barcode && <span className="block text-[10px] text-slate-400 font-mono">[{it.barcode}]</span>}
+                  {selectedBillForModal.items && selectedBillForModal.items.length > 0 ? (
+                    selectedBillForModal.items.map((it: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <td className="p-2.5 font-medium text-slate-900 dark:text-white">
+                          {it.product_name || it.name}
+                          {it.barcode && <span className="block text-[10px] text-slate-400 font-mono">[{it.barcode}]</span>}
+                        </td>
+                        <td className="p-2.5 text-center">{it.quantity ?? it.qty} {it.unit}</td>
+                        <td className="p-2.5 text-right">₹{Number(it.unit_price || 0).toFixed(2)}</td>
+                        <td className="p-2.5 text-right font-bold">
+                          ₹{Number(it.total_amount ?? it.line_total ?? ((it.unit_price || 0) * (it.qty ?? it.quantity ?? 1))).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-slate-400">
+                        No line items recorded for this bill.
                       </td>
-                      <td className="p-2.5 text-center">{it.quantity} {it.unit}</td>
-                      <td className="p-2.5 text-right">₹{Number(it.unit_price).toFixed(2)}</td>
-                      <td className="p-2.5 text-right font-bold">₹{Number(it.total_amount).toFixed(2)}</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1456,21 +1503,21 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <span>Subtotal:</span>
                 <span>₹{Number(selectedBillForModal.subtotal || 0).toFixed(2)}</span>
               </div>
-              {(selectedBillForModal.discount_amount ?? 0) > 0 && (
+              {((selectedBillForModal.discount ?? selectedBillForModal.discount_amount ?? 0) > 0) && (
                 <div className="flex justify-between text-emerald-600">
                   <span>Discount:</span>
-                  <span>-₹{Number(selectedBillForModal.discount_amount).toFixed(2)}</span>
+                  <span>-₹{Number(selectedBillForModal.discount ?? selectedBillForModal.discount_amount).toFixed(2)}</span>
                 </div>
               )}
-              {(selectedBillForModal.tax_amount ?? 0) > 0 && (
+              {((((selectedBillForModal.cgst_amount || 0) + (selectedBillForModal.sgst_amount || 0) + (selectedBillForModal.igst_amount || 0)) || (selectedBillForModal.tax_amount || 0)) > 0) && (
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>GST / Tax:</span>
-                  <span>+₹{Number(selectedBillForModal.tax_amount).toFixed(2)}</span>
+                  <span>+₹{Number(((selectedBillForModal.cgst_amount || 0) + (selectedBillForModal.sgst_amount || 0) + (selectedBillForModal.igst_amount || 0)) || selectedBillForModal.tax_amount).toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-extrabold text-slate-900 dark:text-white pt-1.5 border-t border-slate-200 dark:border-slate-700">
                 <span>Grand Total:</span>
-                <span>₹{Number(selectedBillForModal.grand_total || 0).toFixed(2)}</span>
+                <span>₹{Number(selectedBillForModal.final_total ?? selectedBillForModal.grand_total ?? 0).toFixed(2)}</span>
               </div>
               {selectedBillForModal.amount_paid > 0 && (
                 <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">

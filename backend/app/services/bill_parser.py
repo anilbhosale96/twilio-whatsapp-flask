@@ -2,7 +2,8 @@ import re
 from typing import List, Dict, Any, Optional, Tuple
 
 COMMON_IGNORE_PATTERNS = [
-    r'^(?:tax\s+invoice|bill\s+of\s+supply|retail\s+invoice|cash\s+memo|estimate|quotation|purchase\s+order)$',
+    r'^(?:purchase\s+invoice|sales\s+invoice|tax\s+invoice|retail\s+invoice|bill\s+of\s+supply|cash\s+memo|estimate|quotation|purchase\s+order)',
+    r'^(?:supplier|vendor|distributor|dealer|customer|client|buyer):?',
     r'^(?:gstin|gst\s+no|cin|pan|fssai|phone|mob|tel|email|website|date|invoice\s+no|bill\s+no|order\s+no)',
     r'^(?:subtotal|sub\s+total|total|grand\s+total|cgst|sgst|igst|discount|round\s+off|net\s+amount|cash|card|upi|balance)',
     r'^(?:thank\s+you|visit\s+again|terms|conditions|authorized\s+signatory|customer\s+signature|e\s*&\s*o\s*e)',
@@ -110,13 +111,17 @@ def detect_bill_type(text: str) -> str:
         return 'sold'
     return 'received'  # Default for shop inventory stock-up bills
 
-def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str, Any]]:
+def parse_bill_line(
+    line: str,
+    default_action: str = 'ADD',
+    allow_unquantified: bool = False
+) -> Optional[Dict[str, Any]]:
     """
-    Parses a single line of text from a bill or invoice.
+    Parses a single line of text from a bill, invoice, or customer shopping list.
     Attempts to extract: item_name, quantity, unit, price, and total.
     """
     cleaned_line = line.strip()
-    if not cleaned_line or len(cleaned_line) < 3:
+    if not cleaned_line or len(cleaned_line) < 2:
         return None
 
     # Check ignore patterns
@@ -124,20 +129,26 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
         if re.search(pattern, cleaned_line, re.IGNORECASE):
             return None
 
+    # Normalization of attached numbers / units e.g. 1kgsugar -> 1 kg sugar, 10eggs -> 10 eggs
+    norm_line = re.sub(
+        r'^(\d+(?:\.\d+)?)\s*(kilograms?|kilos?|kg|grams?|gms?|gm|liters?|litres?|ltrs?|ltr|lt|packets?|pkts?|pkt|pieces?|pcs?|pc|boxes?|box|bags?|bag|dozen|ml)(?=[a-zA-Z])',
+        r'\1 \2 ',
+        cleaned_line,
+        flags=re.IGNORECASE
+    )
+    norm_line = re.sub(r'^(\d+(?:\.\d+)?)(?=[a-zA-Z])', r'\1 ', norm_line)
+
     # Pattern A: Tab or multiple spaces separated tabular line
     # e.g.: "Tata Salt 1kg       10 pkts    28.00    280.00"
     # or:   "Parle G             25 pcs     10       250"
-    cols = [c.strip() for c in re.split(r'\t+|\s{2,}', cleaned_line) if c.strip()]
+    cols = [c.strip() for c in re.split(r'\t+|\s{2,}', norm_line) if c.strip()]
     
     if len(cols) >= 3:
-        # Check if last or second to last are numbers
         name_candidate = cols[0]
-        # Look for qty and price in remaining columns
         qty = None
         unit = 'pcs'
         price = None
         
-        # Check column 1 for qty
         qty_match = re.search(r'(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?', cols[1])
         if qty_match:
             try:
@@ -148,7 +159,6 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
             except ValueError:
                 pass
                 
-        # Look for price in remaining columns
         for c in cols[2:]:
             num_clean = re.sub(r'[^\d\.]', '', c)
             if num_clean:
@@ -171,23 +181,30 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
                 }
 
     # Pattern B: Flexible regex for inline formats:
-    # "10 kg Sugar @ 45" or "Tata Salt 10 pkt 28" or "15 Maggi noodles @ 14"
-    # Regex 1: Quantity at the beginning: `(\d+)\s*(kg|pkt|pcs|l|...)?\s+(?:of\s+)?([a-zA-Z0-9\s\-]+?)(?:\s*[@at]\s*(\d+(?:\.\d+)?))?$`
+    # "10 kg Sugar @ 45" or "Tata Salt 10 pkt 28" or "15 Maggi noodles @ 14" or "2 parle G"
+    # Regex 1: Quantity at the beginning
     match_leading_qty = re.search(
         r'^\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s+(?:of\s+)?([a-zA-Z0-9\s\.\-]+?)(?:\s*[@=]\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?))?(?:\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?))?\s*$',
-        cleaned_line,
+        norm_line,
         re.IGNORECASE
     )
     if match_leading_qty:
         try:
             qty = float(match_leading_qty.group(1))
             raw_unit = (match_leading_qty.group(2) or '').lower()
-            unit = UNIT_ALIASES.get(raw_unit, 'pcs' if not raw_unit else raw_unit)
-            name = clean_item_name(match_leading_qty.group(3))
+            name_part = match_leading_qty.group(3)
+            
+            if raw_unit in UNIT_ALIASES:
+                unit = UNIT_ALIASES[raw_unit]
+                name = clean_item_name(name_part)
+            else:
+                unit = 'pcs'
+                name = clean_item_name(f"{raw_unit} {name_part}" if raw_unit else name_part)
+
             price_val = match_leading_qty.group(4) or match_leading_qty.group(5)
             price = float(price_val) if price_val else None
             
-            if qty > 0 and len(name) > 1 and not any(re.search(p, name, re.IGNORECASE) for p in COMMON_IGNORE_PATTERNS):
+            if qty > 0 and len(name) >= 1 and not any(re.search(p, name, re.IGNORECASE) for p in COMMON_IGNORE_PATTERNS):
                 return {
                     "name": name,
                     "qty": qty,
@@ -199,10 +216,10 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
             pass
 
     # Regex 2: Item name first, then quantity:
-    # "Tata Salt 10 packets 28" or "Fortune Oil 5L @ 140 = 700"
+    # "Tata Salt 10 packets 28" or "Fortune Oil 5L @ 140 = 700" or "Sugar 1kg"
     match_trailing_qty = re.search(
         r'^([a-zA-Z0-9\s\.\-]+?)\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?(?:\s*[@=]\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?))?(?:\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?))?$',
-        cleaned_line,
+        norm_line,
         re.IGNORECASE
     )
     if match_trailing_qty:
@@ -214,7 +231,7 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
             price_val = match_trailing_qty.group(4) or match_trailing_qty.group(5)
             price = float(price_val) if price_val else None
 
-            if qty > 0 and len(name) > 1 and not any(re.search(p, name, re.IGNORECASE) for p in COMMON_IGNORE_PATTERNS):
+            if qty > 0 and len(name) >= 1 and not any(re.search(p, name, re.IGNORECASE) for p in COMMON_IGNORE_PATTERNS):
                 return {
                     "name": name,
                     "qty": qty,
@@ -225,9 +242,25 @@ def parse_bill_line(line: str, default_action: str = 'ADD') -> Optional[Dict[str
         except Exception:
             pass
 
+    # Fallback 3: Single item name with no quantity specified (e.g. "zvzvz", "milk", "bread")
+    if allow_unquantified:
+        name_only = clean_item_name(norm_line)
+        if len(name_only) >= 2 and re.search(r'[a-zA-Z]', name_only) and not any(re.search(p, name_only, re.IGNORECASE) for p in COMMON_IGNORE_PATTERNS):
+            return {
+                "name": name_only,
+                "qty": 1.0,
+                "unit": "pcs",
+                "price": None,
+                "action": default_action
+            }
+
     return None
 
-def parse_full_bill_text(text: str, override_type: Optional[str] = None) -> Dict[str, Any]:
+def parse_full_bill_text(
+    text: str,
+    override_type: Optional[str] = None,
+    allow_unquantified: bool = False
+) -> Dict[str, Any]:
     """
     Parses full raw bill/invoice text, extracts all line items,
     computes totals and detects invoice type.
@@ -235,12 +268,14 @@ def parse_full_bill_text(text: str, override_type: Optional[str] = None) -> Dict
     detected_type = override_type or detect_bill_type(text)
     action = 'ADD' if detected_type == 'received' else 'SELL'
     
-    lines = text.splitlines()
+    # Split by newlines or comma/semicolon if separated list
+    raw_lines = re.split(r'[\r\n]+|(?<!\d),(?!\d)|;', text)
+    lines = [l.strip() for l in raw_lines if l.strip()]
     parsed_items: List[Dict[str, Any]] = []
     seen_names = set()
 
     for line in lines:
-        parsed = parse_bill_line(line, default_action=action)
+        parsed = parse_bill_line(line, default_action=action, allow_unquantified=allow_unquantified)
         if parsed:
             # Consolidate if identical product appears multiple times in invoice
             normalized_key = parsed["name"].lower()

@@ -981,22 +981,27 @@ def get_customer_bills(
         results.append({
             "id": b.id,
             "bill_number": b.bill_number,
+            "order_id": b.order_id,
             "bill_type": b.bill_type,
             "status": b.status,
             "issue_date": b.issue_date.isoformat() if b.issue_date else "",
+            "created_at": b.created_at.isoformat() if b.created_at else "",
             "vendor_name": vendor.shop_name if vendor else "Local Store",
             "vendor_phone": b.vendor_phone,
+            "vendor_address": getattr(vendor, "address", "") if vendor else "",
             "subtotal": b.subtotal,
             "discount": b.discount,
             "tax_rate": b.tax_rate,
             "final_total": b.final_total,
+            "grand_total": b.final_total,
             "payment_status": b.payment_status,
             "payment_method": b.payment_method,
             "amount_paid": b.amount_paid,
             "balance_due": b.balance_due,
             "has_pdf": bool(b.pdf_path and os.path.exists(b.pdf_path)),
             "access_token": b.access_token,
-            "items_count": len(json.loads(b.items_json)) if b.items_json else 0
+            "items_count": len(json.loads(b.items_json)) if b.items_json else 0,
+            "items": json.loads(b.items_json) if b.items_json else []
         })
 
     return {

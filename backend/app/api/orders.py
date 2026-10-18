@@ -193,7 +193,8 @@ def serialize_order(order: Order) -> Dict[str, Any]:
             "payment_status": b.payment_status,
             "payment_method": b.payment_method,
             "vendor_gstin": b.vendor_gstin,
-            "has_pdf": bool(b.pdf_path and os.path.exists(b.pdf_path))
+            "has_pdf": bool(b.pdf_path and os.path.exists(b.pdf_path)),
+            "access_token": b.access_token
         })
 
     vendor_info = {
@@ -382,7 +383,7 @@ async def place_customer_order(
 
     elif raw_text:
         # Heuristic parse lines from raw text notes or shopping list
-        parsed = parse_full_bill_text(raw_text)
+        parsed = parse_full_bill_text(raw_text, allow_unquantified=True)
         parsed_items = parsed.get("items", [])
         if parsed_items:
             for it in parsed_items:
@@ -781,7 +782,10 @@ def send_vendor_quotation(
         order_id=order.id,
         vendor_phone=current_vendor.phone,
         customer_phone=order.customer_phone,
+        customer_name=order.customer_name,
+        customer_address=order.customer_address,
         bill_type="quotation",
+        status="sent",
         version=version,
         issue_date=issue_date,
         subtotal=calc["subtotal"],
@@ -793,6 +797,7 @@ def send_vendor_quotation(
         delivery_charge=calc["delivery_charge"],
         final_total=calc["final_total"],
         payment_status="unpaid",
+        access_token=secrets.token_urlsafe(24),
         items_json=json.dumps(calc["items"], ensure_ascii=False),
         notes=payload.notes,
         pdf_path=str(pdf_file_path),
@@ -928,7 +933,10 @@ def generate_vendor_final_bill(
         order_id=order.id,
         vendor_phone=current_vendor.phone,
         customer_phone=order.customer_phone,
+        customer_name=order.customer_name,
+        customer_address=order.customer_address,
         bill_type=payload.bill_type,
+        status="finalized",
         version=version,
         issue_date=issue_date,
         subtotal=calc["subtotal"],
@@ -941,6 +949,8 @@ def generate_vendor_final_bill(
         final_total=calc["final_total"],
         payment_status="unpaid",
         payment_method=payload.payment_method,
+        stock_deducted=True,
+        access_token=secrets.token_urlsafe(24),
         vendor_gstin=getattr(current_vendor, "gstin", None),
         items_json=json.dumps(calc["items"], ensure_ascii=False),
         notes=payload.notes,
@@ -1083,29 +1093,17 @@ def mark_vendor_order_paid(
 def download_order_pdf(
     order_id: str,
     bill_number: Optional[str] = None,
+    token: Optional[str] = None,
     user: Any = Depends(get_optional_user),
     db: Session = Depends(get_db)
 ):
     """
     Securely serves PDF for an order's quotation or invoice.
-    Requires server-side authorization check: only authorized customer or shop owner can access.
+    Requires server-side authorization check: authorized customer, shop owner, or valid access token.
     """
     order = db.query(Order).filter_by(id=order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found.")
-
-    # Authorization verification
-    authorized = False
-    if user:
-        user_phone = user.get("phone") if isinstance(user, dict) else getattr(user, "phone", None)
-        if user_phone and (user_phone == order.vendor_phone or user_phone == order.customer_phone):
-            authorized = True
-
-    if not authorized:
-        raise HTTPException(
-            status_code=403,
-            detail="Forbidden. Only the shopkeeper or the customer who placed this order may download its bill."
-        )
 
     # Locate bill
     bill_query = db.query(Bill).filter_by(order_id=order.id)
@@ -1116,6 +1114,21 @@ def download_order_pdf(
 
     if not bill or not bill.pdf_path or not os.path.exists(bill.pdf_path):
         raise HTTPException(status_code=404, detail="Bill PDF has not been generated for this order.")
+
+    # Authorization verification
+    authorized = False
+    if token and bill.access_token and secrets.compare_digest(token, bill.access_token):
+        authorized = True
+    elif user:
+        user_phone = user.get("phone") if isinstance(user, dict) else getattr(user, "phone", None)
+        if user_phone and (user_phone == order.vendor_phone or user_phone == order.customer_phone):
+            authorized = True
+
+    if not authorized:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden. Only the shopkeeper or the customer who placed this order may download its bill."
+        )
 
     return FileResponse(
         bill.pdf_path,
