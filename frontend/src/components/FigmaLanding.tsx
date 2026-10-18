@@ -65,12 +65,7 @@ export const FigmaLanding: React.FC<FigmaLandingProps> = ({
         {/* Hero Section */}
         <section className="hero wrap">
           <div className="hero-copy">
-            <div className="eyebrow">
-              <span>
-                <FigmaIcon name="sparkle" size={14} />
-              </span>
-              AI-powered inventory for local shops
-            </div>
+
 
             <h1>
               Just WhatsApp it.
