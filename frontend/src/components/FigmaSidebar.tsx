@@ -3,6 +3,7 @@ import { FigmaIcon } from './FigmaIcon';
 
 export type FigmaPage =
   | 'Dashboard'
+  | 'Billing'
   | 'Orders'
   | 'Inventory'
   | 'WhatsApp Activity'
@@ -30,6 +31,7 @@ interface FigmaSidebarProps {
 
 const WORKSPACE_NAV: Array<[FigmaPage, string]> = [
   ['Dashboard', 'box'],
+  ['Billing', 'receipt'],
   ['Orders', 'bag'],
   ['Inventory', 'inventory'],
   ['WhatsApp Activity', 'whatsapp'],

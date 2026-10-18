@@ -9,7 +9,10 @@ import type {
   ChatMessage,
   AuthUser,
   ProductDiscoveryItem,
-  OrderData
+  OrderData,
+  CustomerRecord,
+  VendorBillData,
+  BarcodeDecodeResult
 } from '../types';
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'offline';
@@ -764,6 +767,220 @@ export function useLiveDashboard() {
     }
   }, [getAuthHeaders]);
 
+  // --- Barcode & Quick Add Methods ---
+  const decodeBarcodeImage = useCallback(async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/barcode/decode', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+      const data = await res.json();
+      return data as { success: boolean; message: string; barcodes: BarcodeDecodeResult[]; primary_barcode?: string };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to decode barcode', barcodes: [] };
+    }
+  }, [getAuthHeaders]);
+
+  const searchProductByBarcode = useCallback(async (code: string) => {
+    try {
+      const res = await fetch(`/api/vendor/inventory/barcode/${encodeURIComponent(code)}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return { found: false, message: 'Network error' };
+  }, [getAuthHeaders]);
+
+  const quickAddInventoryProduct = useCallback(async (formData: FormData) => {
+    try {
+      const res = await fetch('/api/vendor/inventory/quick-add', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchInventory();
+        fetchSummary();
+      }
+      return { success: res.ok, message: data.message || data.detail, item: data.item };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders, fetchInventory, fetchSummary]);
+
+  // --- Customer Selection for Vendor ---
+  const fetchVendorCustomers = useCallback(async (query?: string) => {
+    try {
+      const url = query ? `/api/vendor/customers?q=${encodeURIComponent(query)}` : '/api/vendor/customers';
+      const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, customers: (data.customers || []) as CustomerRecord[] };
+      }
+    } catch {}
+    return { success: false, customers: [] as CustomerRecord[] };
+  }, [getAuthHeaders]);
+
+  const createVendorCustomer = useCallback(async (custData: { name: string; phone: string; address?: string; city?: string; email?: string }) => {
+    try {
+      const res = await fetch('/api/vendor/customers', {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(custData)
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, customer: data.customer as CustomerRecord };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  // --- Vendor Billing Workspace Methods ---
+  const createVendorBill = useCallback(async (payload: any) => {
+    try {
+      const res = await fetch('/api/vendor/bills', {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && payload.status === 'finalized') {
+        fetchInventory();
+        fetchSummary();
+        fetchTransactions();
+      }
+      return { success: res.ok, message: data.message || data.detail, bill: data.bill as VendorBillData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders, fetchInventory, fetchSummary, fetchTransactions]);
+
+  const fetchVendorBills = useCallback(async (statusFilter?: string, search?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (search) params.append('search', search);
+      const url = `/api/vendor/bills?_t=${Date.now()}${params.toString() ? '&' + params.toString() : ''}`;
+      const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, total: data.total, bills: (data.bills || []) as VendorBillData[] };
+      }
+    } catch {}
+    return { success: false, total: 0, bills: [] as VendorBillData[] };
+  }, [getAuthHeaders]);
+
+  const fetchVendorBillDetail = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`/api/vendor/bills/${id}?_t=${Date.now()}`, { headers: getAuthHeaders(), cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, bill: data.bill as VendorBillData };
+      }
+    } catch {}
+    return { success: false, bill: null };
+  }, [getAuthHeaders]);
+
+  const finalizeVendorBill = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`/api/vendor/bills/${id}/finalize`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchInventory();
+        fetchSummary();
+        fetchTransactions();
+      }
+      return { success: res.ok, message: data.message || data.detail, bill: data.bill as VendorBillData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders, fetchInventory, fetchSummary, fetchTransactions]);
+
+  const sendVendorBill = useCallback(async (id: number, channel: string, recipientPhone?: string) => {
+    try {
+      const res = await fetch(`/api/vendor/bills/${id}/send`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ channel, recipient_phone: recipientPhone })
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, status: data.status, bill: data.bill as VendorBillData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const recordBillPayment = useCallback(async (id: number, amount: number, paymentMethod: string, notes?: string) => {
+    try {
+      const res = await fetch(`/api/vendor/bills/${id}/payment`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ amount, payment_method: paymentMethod, notes })
+      });
+      const data = await res.json();
+      return { success: res.ok, message: data.message || data.detail, bill: data.bill as VendorBillData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders]);
+
+  const cancelVendorBill = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`/api/vendor/bills/${id}/cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchInventory();
+        fetchSummary();
+        fetchTransactions();
+      }
+      return { success: res.ok, message: data.message || data.detail, bill: data.bill as VendorBillData };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error' };
+    }
+  }, [getAuthHeaders, fetchInventory, fetchSummary, fetchTransactions]);
+
+  // --- Customer Bills & History Methods ---
+  const fetchCustomerBills = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/customer/bills?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, bills: (data.bills || []) as VendorBillData[] };
+      }
+    } catch {}
+    return { success: false, bills: [] as VendorBillData[] };
+  }, [getAuthHeaders]);
+
+  const fetchCustomerBillDetail = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`/api/customer/bills/${id}?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, bill: data.bill as VendorBillData };
+      }
+    } catch {}
+    return { success: false, bill: null };
+  }, [getAuthHeaders]);
+
   // Setup Server-Sent Events (SSE)
   useEffect(() => {
     refreshAll();
@@ -855,6 +1072,20 @@ export function useLiveDashboard() {
     generateVendorBill,
     updateVendorOrderStatus,
     markVendorOrderPaid,
+    decodeBarcodeImage,
+    searchProductByBarcode,
+    quickAddInventoryProduct,
+    fetchVendorCustomers,
+    createVendorCustomer,
+    createVendorBill,
+    fetchVendorBills,
+    fetchVendorBillDetail,
+    finalizeVendorBill,
+    sendVendorBill,
+    recordBillPayment,
+    cancelVendorBill,
+    fetchCustomerBills,
+    fetchCustomerBillDetail,
     addItem,
     deleteItem,
     patchItem,

@@ -100,7 +100,12 @@ def get_current_customer(
         )
 
     phone = payload["sub"]
-    customer = db.query(Customer).filter_by(phone=phone).first()
+    clean_p = phone.replace("whatsapp:", "").strip()
+    customer = db.query(Customer).filter(
+        (Customer.phone == phone) | 
+        (Customer.phone == clean_p) | 
+        (Customer.phone == f"whatsapp:{clean_p}")
+    ).first()
     if not customer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -126,9 +131,14 @@ def get_optional_user(
 
     role = payload.get("role", "vendor")
     phone = payload["sub"]
+    clean_p = phone.replace("whatsapp:", "").strip()
 
     if role == "customer":
-        cust = db.query(Customer).filter_by(phone=phone).first()
+        cust = db.query(Customer).filter(
+            (Customer.phone == phone) | 
+            (Customer.phone == clean_p) | 
+            (Customer.phone == f"whatsapp:{clean_p}")
+        ).first()
         if cust:
             return {
                 "role": "customer",
@@ -137,14 +147,29 @@ def get_optional_user(
                 "email": cust.email,
                 "city": cust.city
             }
+        # If payload has customer info even if not in DB
+        return {
+            "role": "customer",
+            "phone": phone,
+            "name": payload.get("name", "Customer")
+        }
     else:
-        vend = db.query(Vendor).filter_by(phone=phone).first()
-        if vend:
+        clean_p = phone.replace("whatsapp:", "").strip()
+        vendor = db.query(Vendor).filter(
+            (Vendor.phone == phone) | 
+            (Vendor.phone == clean_p) | 
+            (Vendor.phone == f"whatsapp:{clean_p}")
+        ).first()
+        if vendor:
             return {
-                "role": getattr(vend, "role", "vendor"),
-                "phone": vend.phone,
-                "name": vend.name,
-                "shop_name": vend.shop_name,
-                "category": vend.category
+                "role": getattr(vendor, "role", "vendor") or "vendor",
+                "phone": vendor.phone,
+                "shop_name": vendor.shop_name,
+                "name": vendor.name
             }
+        return {
+            "role": "vendor",
+            "phone": phone,
+            "name": "Vendor"
+        }
     return None

@@ -42,6 +42,11 @@ export interface InventoryItem {
   threshold: number;
   price: number | null;
   price_formatted: string | null;
+  cost_price?: number | null;
+  tax_rate?: number;
+  barcode?: string | null;
+  sku?: string | null;
+  category?: string;
   reordered: boolean;
   is_low: boolean;
   is_out_of_stock: boolean;
@@ -261,4 +266,77 @@ export interface OrderData {
   updated_at?: string;
   items: OrderItemData[];
   bills: BillData[];
+}
+
+export interface CustomerRecord {
+  name: string;
+  phone: string;
+  address?: string;
+  city?: string;
+  email?: string;
+  is_registered?: boolean;
+}
+
+export interface VendorBillItem {
+  item_id?: number;
+  product_name: string;
+  qty: number;
+  quantity?: number;
+  unit: string;
+  unit_price: number;
+  barcode?: string | null;
+  sku?: string | null;
+  discount?: number;
+  tax_rate?: number;
+  line_total: number;
+  total_amount?: number;
+  current_stock?: number;
+}
+
+export interface VendorBillData {
+  id: number;
+  bill_number: string;
+  order_id?: string;
+  vendor_phone: string;
+  vendor_name?: string;
+  vendor_address?: string;
+  customer_phone?: string;
+  customer_name?: string;
+  customer_address?: string;
+  bill_type: 'invoice' | 'quotation';
+  status: 'draft' | 'finalized' | 'sent' | 'paid' | 'partially_paid' | 'cancelled';
+  version: number;
+  issue_date?: string;
+  subtotal: number;
+  discount: number;
+  discount_amount?: number;
+  tax_rate: number;
+  tax_amount?: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  igst_amount: number;
+  delivery_charge: number;
+  final_total: number;
+  grand_total?: number;
+  payment_status: 'unpaid' | 'paid' | 'partially_paid' | 'cancelled';
+  payment_method?: string;
+  amount_paid: number;
+  balance_due: number;
+  delivery_channel?: string;
+  delivery_status: 'pending' | 'delivered' | 'failed' | 'sent' | 'skipped';
+  delivery_error?: string;
+  stock_deducted: boolean;
+  access_token?: string;
+  vendor_gstin?: string;
+  notes?: string;
+  has_pdf: boolean;
+  items: VendorBillItem[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BarcodeDecodeResult {
+  text: string;
+  format: string;
+  is_valid?: boolean;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FigmaIcon } from './FigmaIcon';
-import type { AuthUser, ProductDiscoveryItem, OrderData } from '../types';
+import type { AuthUser, ProductDiscoveryItem, OrderData, VendorBillData } from '../types';
 
 interface CustomerDashboardProps {
   currentUser: AuthUser | null;
@@ -28,6 +28,8 @@ interface CustomerDashboardProps {
   onFetchOrders?: () => Promise<{ success: boolean; orders: OrderData[] }>;
   onApproveQuote?: (orderId: string) => Promise<{ success: boolean; message?: string; order?: OrderData }>;
   onCancelOrder?: (orderId: string, reason?: string) => Promise<{ success: boolean; message?: string; order?: OrderData }>;
+  onFetchCustomerBills?: () => Promise<{ success: boolean; bills: VendorBillData[] }>;
+  onFetchCustomerBillDetail?: (id: number) => Promise<{ success: boolean; bill?: VendorBillData | null }>;
   onShowToast?: (msg: string) => void;
 }
 
@@ -50,10 +52,17 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   onFetchOrders,
   onApproveQuote,
   onCancelOrder,
+  onFetchCustomerBills,
+  onFetchCustomerBillDetail: _onFetchCustomerBillDetail,
   onShowToast
 }) => {
-  // Navigation: 'catalog' vs 'orders'
-  const [activeTab, setActiveTab] = useState<'catalog' | 'orders'>('catalog');
+  // Navigation: 'catalog' vs 'orders' vs 'bills'
+  const [activeTab, setActiveTab] = useState<'catalog' | 'orders' | 'bills'>('catalog');
+
+  // Customer Bills State
+  const [myBills, setMyBills] = useState<VendorBillData[]>([]);
+  const [isLoadingBills, setIsLoadingBills] = useState(false);
+  const [selectedBillForModal, setSelectedBillForModal] = useState<VendorBillData | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,6 +188,26 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
       loadOrders();
     }
   }, [activeTab, loadOrders]);
+
+  // Load customer bills
+  const loadBills = useCallback(async () => {
+    if (!onFetchCustomerBills) return;
+    setIsLoadingBills(true);
+    try {
+      const res = await onFetchCustomerBills();
+      if (res.success) {
+        setMyBills(res.bills || []);
+      }
+    } finally {
+      setIsLoadingBills(false);
+    }
+  }, [onFetchCustomerBills]);
+
+  useEffect(() => {
+    if (activeTab === 'bills') {
+      loadBills();
+    }
+  }, [activeTab, loadBills]);
 
   // Cart operations
   const handleAddToCart = (product: ProductDiscoveryItem) => {
@@ -356,7 +385,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
             </span>
           </div>
 
-          {/* Navigation Pill (Browse Catalog vs My Orders) */}
+          {/* Navigation Pill (Browse Catalog vs My Orders vs Bills & History) */}
           <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
             <button
               type="button"
@@ -382,6 +411,22 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               {myOrders.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-600 text-white font-extrabold">
                   {myOrders.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('bills')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'bills'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>Bills & Invoices</span>
+              {myBills.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-600 text-white font-extrabold">
+                  {myBills.length}
                 </span>
               )}
             </button>
@@ -624,6 +669,131 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'bills' ? (
+          /* ========================================================================= */
+          /* CUSTOMER BILLS & HISTORY TAB */
+          /* ========================================================================= */
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>My Bills & Invoices</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-bold">
+                    {myBills.length}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Access official invoices, receipts, and itemized billing history from local vendors.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadBills}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center gap-1 cursor-pointer shadow-xs self-start sm:self-auto"
+              >
+                <FigmaIcon name="refresh" size={13} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            {isLoadingBills ? (
+              <div className="p-12 text-center text-xs text-slate-500">Loading your bills...</div>
+            ) : myBills.length === 0 ? (
+              <div className="p-12 text-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+                <span className="w-12 h-12 mx-auto rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center">
+                  <FigmaIcon name="receipt" size={24} />
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">No bills or invoices yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  When you purchase items or approve quotations from neighborhood shops, your bills and receipts will be stored here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('catalog')}
+                  className="btn btn-primary px-4 py-2 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Explore Store Catalog
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {myBills.map((bill) => (
+                  <div
+                    key={bill.id}
+                    className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-4 flex flex-col justify-between hover:border-blue-400 transition-colors"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                          {bill.bill_number}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
+                          bill.status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                            : bill.status === 'cancelled'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
+                            : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'
+                        }`}>
+                          {bill.status}
+                        </span>
+                      </div>
+
+                      <div>
+                        <b className="text-sm font-bold text-slate-900 dark:text-white block">
+                          🏪 {bill.vendor_name || 'Neighborhood Store'}
+                        </b>
+                        <span className="text-[11px] text-slate-500">
+                          Date: {new Date(bill.created_at || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                        <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
+                          <span>{bill.items?.length || 0} line items</span>
+                          <span className="text-sm font-extrabold text-slate-900 dark:text-white">
+                            Total: ₹{Number(bill.grand_total || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        {bill.amount_paid > 0 && (
+                          <div className="flex justify-between text-[11px] text-emerald-600 dark:text-emerald-400">
+                            <span>Paid:</span>
+                            <span>₹{Number(bill.amount_paid).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {bill.balance_due > 0 && (
+                          <div className="flex justify-between text-[11px] text-rose-600 dark:text-rose-400 font-bold">
+                            <span>Balance Due:</span>
+                            <span>₹{Number(bill.balance_due).toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBillForModal(bill)}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                      >
+                        View Items
+                      </button>
+
+                      <a
+                        href={`/api/bills/${bill.id}/pdf${bill.access_token ? `?token=${encodeURIComponent(bill.access_token)}` : ''}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                      >
+                        <FigmaIcon name="download" size={13} />
+                        <span>Download PDF</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1216,6 +1386,123 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <FigmaIcon name="bag" size={14} />
                 <span>Add to Cart</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bill Details Modal */}
+      {selectedBillForModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#162032] rounded-3xl border border-[#e2e8f0] dark:border-[#1e293b] w-full max-w-lg p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] dark:border-[#1e293b] pb-3">
+              <div>
+                <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 block">
+                  {selectedBillForModal.bill_number}
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  Invoice from {selectedBillForModal.vendor_name || 'Store'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBillForModal(null)}
+                className="text-slate-400 hover:text-slate-700 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs space-y-2">
+              <div className="flex justify-between text-slate-500">
+                <span>Date: {new Date(selectedBillForModal.created_at || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span className="uppercase font-bold text-emerald-600">{selectedBillForModal.status}</span>
+              </div>
+              {selectedBillForModal.vendor_address && (
+                <p className="text-slate-500">Address: {selectedBillForModal.vendor_address}</p>
+              )}
+            </div>
+
+            {/* Line items table */}
+            <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold">
+                  <tr>
+                    <th className="p-2.5">Item</th>
+                    <th className="p-2.5 text-center">Qty</th>
+                    <th className="p-2.5 text-right">Price</th>
+                    <th className="p-2.5 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {selectedBillForModal.items?.map((it, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <td className="p-2.5 font-medium text-slate-900 dark:text-white">
+                        {it.product_name}
+                        {it.barcode && <span className="block text-[10px] text-slate-400 font-mono">[{it.barcode}]</span>}
+                      </td>
+                      <td className="p-2.5 text-center">{it.quantity} {it.unit}</td>
+                      <td className="p-2.5 text-right">₹{Number(it.unit_price).toFixed(2)}</td>
+                      <td className="p-2.5 text-right font-bold">₹{Number(it.total_amount).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary breakdown */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Subtotal:</span>
+                <span>₹{Number(selectedBillForModal.subtotal || 0).toFixed(2)}</span>
+              </div>
+              {(selectedBillForModal.discount_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Discount:</span>
+                  <span>-₹{Number(selectedBillForModal.discount_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {(selectedBillForModal.tax_amount ?? 0) > 0 && (
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                  <span>GST / Tax:</span>
+                  <span>+₹{Number(selectedBillForModal.tax_amount).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-extrabold text-slate-900 dark:text-white pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                <span>Grand Total:</span>
+                <span>₹{Number(selectedBillForModal.grand_total || 0).toFixed(2)}</span>
+              </div>
+              {selectedBillForModal.amount_paid > 0 && (
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span>Amount Paid:</span>
+                  <span>₹{Number(selectedBillForModal.amount_paid).toFixed(2)}</span>
+                </div>
+              )}
+              {selectedBillForModal.balance_due > 0 && (
+                <div className="flex justify-between text-rose-600 dark:text-rose-400 font-bold">
+                  <span>Balance Due:</span>
+                  <span>₹{Number(selectedBillForModal.balance_due).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedBillForModal(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Close
+              </button>
+              <a
+                href={`/api/bills/${selectedBillForModal.id}/pdf${selectedBillForModal.access_token ? `?token=${encodeURIComponent(selectedBillForModal.access_token)}` : ''}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+              >
+                <FigmaIcon name="download" size={13} />
+                <span>Download PDF</span>
+              </a>
             </div>
           </div>
         </div>

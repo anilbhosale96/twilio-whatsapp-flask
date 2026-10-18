@@ -163,3 +163,4 @@ def identify_and_price_item(
         "current_inventory_qty": 0.0,
         "is_confirmed_by_vendor": False
     }
+

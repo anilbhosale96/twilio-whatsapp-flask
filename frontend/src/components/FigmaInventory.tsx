@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FigmaIcon } from './FigmaIcon';
-import type { InventoryItem } from '../types';
+import { FigmaBarcodeScanner } from './FigmaBarcodeScanner';
+import type { InventoryItem, BarcodeDecodeResult } from '../types';
 
 interface FigmaInventoryProps {
   items: InventoryItem[];
@@ -11,6 +12,10 @@ interface FigmaInventoryProps {
     qty?: number;
     threshold?: number;
     price?: number;
+    barcode?: string;
+    sku?: string;
+    cost_price?: number;
+    tax_rate?: number;
   }) => Promise<{ success: boolean; message?: string }>;
   onPatchItem: (
     id: number,
@@ -21,9 +26,19 @@ interface FigmaInventoryProps {
       threshold?: number;
       price?: number;
       reordered?: boolean;
+      barcode?: string;
+      sku?: string;
+      cost_price?: number;
+      tax_rate?: number;
     }
   ) => Promise<boolean>;
   onDeleteItem?: (id: number) => Promise<boolean>;
+  onDecodeBarcodeImage?: (file: File) => Promise<{
+    success: boolean;
+    message: string;
+    barcodes: BarcodeDecodeResult[];
+    primary_barcode?: string;
+  }>;
 }
 
 export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
@@ -31,11 +46,13 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
   onSelectProduct,
   onAddItem,
   onPatchItem,
-  onDeleteItem
+  onDeleteItem,
+  onDecodeBarcodeImage
 }) => {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'low_high'>('recent');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Add Product Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,6 +61,10 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
   const [newQty, setNewQty] = useState('20');
   const [newThreshold, setNewThreshold] = useState('5');
   const [newPrice, setNewPrice] = useState('40');
+  const [newBarcode, setNewBarcode] = useState('');
+  const [newSku, setNewSku] = useState('');
+  const [newCostPrice, setNewCostPrice] = useState('');
+  const [newTaxRate, setNewTaxRate] = useState('0');
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -54,11 +75,20 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
   const [editQty, setEditQty] = useState('0');
   const [editThreshold, setEditThreshold] = useState('5');
   const [editPrice, setEditPrice] = useState('0');
+  const [editBarcode, setEditBarcode] = useState('');
+  const [editSku, setEditSku] = useState('');
+  const [editCostPrice, setEditCostPrice] = useState('');
+  const [editTaxRate, setEditTaxRate] = useState('0');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   const filtered = items.filter((item) => {
-    return item.name.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(q) ||
+      (item.barcode && item.barcode.toLowerCase().includes(q)) ||
+      (item.sku && item.sku.toLowerCase().includes(q))
+    );
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -68,12 +98,37 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
     return b.id - a.id;
   });
 
+  const handleBarcodeDetected = (code: string) => {
+    setIsScannerOpen(false);
+    const existing = items.find((i) => (i.barcode && i.barcode.toLowerCase() === code.toLowerCase()) || (i.sku && i.sku.toLowerCase() === code.toLowerCase()));
+    if (existing) {
+      setSearch(code);
+      onSelectProduct(existing);
+    } else {
+      setNewName('');
+      setNewUnit('pcs');
+      setNewQty('20');
+      setNewThreshold('5');
+      setNewPrice('40');
+      setNewBarcode(code);
+      setNewSku(code);
+      setNewCostPrice('');
+      setNewTaxRate('0');
+      setAddError(null);
+      setIsAddModalOpen(true);
+    }
+  };
+
   const handleOpenAddModal = () => {
     setNewName('');
     setNewUnit('pcs');
     setNewQty('20');
     setNewThreshold('5');
     setNewPrice('40');
+    setNewBarcode('');
+    setNewSku('');
+    setNewCostPrice('');
+    setNewTaxRate('0');
     setAddError(null);
     setIsAddModalOpen(true);
   };
@@ -92,7 +147,11 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
       unit: newUnit.trim().toLowerCase(),
       qty: parseFloat(newQty) || 0,
       threshold: parseFloat(newThreshold) || 5,
-      price: parseFloat(newPrice) || 0
+      price: parseFloat(newPrice) || 0,
+      barcode: newBarcode.trim() || undefined,
+      sku: newSku.trim() || undefined,
+      cost_price: newCostPrice ? parseFloat(newCostPrice) : undefined,
+      tax_rate: newTaxRate ? parseFloat(newTaxRate) : undefined
     });
 
     setIsSubmittingAdd(false);
@@ -110,6 +169,10 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
     setEditQty(item.qty.toString());
     setEditThreshold(item.threshold.toString());
     setEditPrice((item.price ?? 0).toString());
+    setEditBarcode(item.barcode || '');
+    setEditSku(item.sku || '');
+    setEditCostPrice(item.cost_price ? item.cost_price.toString() : '');
+    setEditTaxRate(item.tax_rate !== undefined ? item.tax_rate.toString() : '0');
     setEditError(null);
   };
 
@@ -128,7 +191,11 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
       unit: editUnit.trim().toLowerCase(),
       qty: parseFloat(editQty) || 0,
       threshold: parseFloat(editThreshold) || 5,
-      price: parseFloat(editPrice) || 0
+      price: parseFloat(editPrice) || 0,
+      barcode: editBarcode.trim() || undefined,
+      sku: editSku.trim() || undefined,
+      cost_price: editCostPrice ? parseFloat(editCostPrice) : undefined,
+      tax_rate: editTaxRate ? parseFloat(editTaxRate) : undefined
     });
 
     setIsSubmittingEdit(false);
@@ -159,13 +226,24 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
           <h1>Inventory</h1>
           <p>Track, add, and edit all products in your shop.</p>
         </div>
-        <button
-          className="btn btn-primary cursor-pointer flex items-center space-x-1.5"
-          onClick={handleOpenAddModal}
-        >
-          <FigmaIcon name="plus" size={17} />
-          <span>Add Product</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-secondary cursor-pointer flex items-center space-x-1.5"
+            onClick={() => setIsScannerOpen(true)}
+          >
+            <FigmaIcon name="search" size={17} />
+            <span>Scan Barcode</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary cursor-pointer flex items-center space-x-1.5"
+            onClick={handleOpenAddModal}
+          >
+            <FigmaIcon name="plus" size={17} />
+            <span>Add Product</span>
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -240,7 +318,14 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
                 >
                   <span className="product-cell">
                     <i className={`product-avatar ${avatarTone}`}>{initials}</i>
-                    <b>{item.name}</b>
+                    <div>
+                      <b>{item.name}</b>
+                      {(item.barcode || item.sku) && (
+                        <span className="text-[10px] text-[#64748b] dark:text-[#94a3b8] font-mono block">
+                          {item.barcode ? `Barcode: ${item.barcode}` : `SKU: ${item.sku}`}
+                        </span>
+                      )}
+                    </div>
                   </span>
                   <span
                     className="flex items-center"
@@ -414,6 +499,66 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    Barcode (EAN/UPC)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 8901030383786"
+                    value={newBarcode}
+                    onChange={(e) => setNewBarcode(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    SKU Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SKU-101"
+                    value={newSku}
+                    onChange={(e) => setNewSku(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    Cost Price (₹) <span className="text-neutral-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Purchase cost"
+                    value={newCostPrice}
+                    onChange={(e) => setNewCostPrice(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    GST Rate (%)
+                  </label>
+                  <select
+                    value={newTaxRate}
+                    onChange={(e) => setNewTaxRate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc]"
+                  >
+                    <option value="0">0% (Nil)</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#e5eaf2] dark:border-[#334155]">
                 <button
                   type="button"
@@ -538,6 +683,66 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    Barcode (EAN/UPC)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 8901030383786"
+                    value={editBarcode}
+                    onChange={(e) => setEditBarcode(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    SKU Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SKU-101"
+                    value={editSku}
+                    onChange={(e) => setEditSku(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    Cost Price (₹) <span className="text-neutral-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Purchase cost"
+                    value={editCostPrice}
+                    onChange={(e) => setEditCostPrice(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#17213a] dark:text-[#f8fafc] block mb-1">
+                    GST Rate (%)
+                  </label>
+                  <select
+                    value={editTaxRate}
+                    onChange={(e) => setEditTaxRate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#e5eaf2] dark:border-[#334155] bg-white dark:bg-[#162032] text-[#17213a] dark:text-[#f8fafc]"
+                  >
+                    <option value="0">0% (Nil)</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between pt-3 border-t border-[#e5eaf2] dark:border-[#334155]">
                 {onDeleteItem && (
                   <button
@@ -570,6 +775,14 @@ export const FigmaInventory: React.FC<FigmaInventoryProps> = ({
           </div>
         </div>
       )}
+
+      {/* Barcode Scanner Modal */}
+      <FigmaBarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onBarcodeScanned={handleBarcodeDetected}
+        onDecodeImage={onDecodeBarcodeImage}
+      />
     </div>
   );
 };

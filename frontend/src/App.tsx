@@ -8,6 +8,7 @@ import type { FigmaPage } from './components/FigmaSidebar';
 import { FigmaTopbar } from './components/FigmaTopbar';
 import { FigmaDashboard } from './components/FigmaDashboard';
 import { FigmaOrders } from './components/FigmaOrders';
+import { FigmaBilling } from './components/FigmaBilling';
 import { FigmaInventory } from './components/FigmaInventory';
 import { FigmaProductDetail } from './components/FigmaProductDetail';
 import { FigmaWhatsAppActivity } from './components/FigmaWhatsAppActivity';
@@ -61,7 +62,21 @@ export const App: React.FC = () => {
     sendVendorQuote,
     generateVendorBill,
     updateVendorOrderStatus,
-    markVendorOrderPaid
+    markVendorOrderPaid,
+    fetchVendorCustomers,
+    createVendorCustomer,
+    fetchVendorBills,
+    fetchVendorBillDetail,
+    createVendorBill,
+    finalizeVendorBill,
+    sendVendorBill,
+    recordBillPayment,
+    cancelVendorBill,
+    decodeBarcodeImage,
+    searchProductByBarcode,
+    quickAddInventoryProduct,
+    fetchCustomerBills,
+    fetchCustomerBillDetail
   } = useLiveDashboard();
 
   // Mode: Landing Showcase vs Auth (Login / Register) vs Live Store App
@@ -267,6 +282,8 @@ export const App: React.FC = () => {
           onFetchOrders={fetchCustomerOrders}
           onApproveQuote={approveCustomerQuote}
           onCancelOrder={cancelCustomerOrder}
+          onFetchCustomerBills={fetchCustomerBills}
+          onFetchCustomerBillDetail={fetchCustomerBillDetail}
           onShowToast={showToast}
         />
         {/* Toast Notification */}
@@ -350,6 +367,25 @@ export const App: React.FC = () => {
                 setIsQuickUpdateModalOpen(true);
               }}
             />
+          ) : activePage === 'Billing' ? (
+            <FigmaBilling
+              inventory={inventory}
+              shopName={currentUser?.shop_name || settings?.shop_name || settings?.name}
+              ownerName={currentUser?.name || settings?.name}
+              onFetchCustomers={fetchVendorCustomers}
+              onCreateCustomer={createVendorCustomer}
+              onFetchBills={fetchVendorBills}
+              onFetchBillDetail={fetchVendorBillDetail}
+              onCreateBill={createVendorBill}
+              onFinalizeBill={finalizeVendorBill}
+              onSendBill={sendVendorBill}
+              onRecordPayment={recordBillPayment}
+              onCancelBill={cancelVendorBill}
+              onSearchBarcode={searchProductByBarcode}
+              onQuickAddProduct={quickAddInventoryProduct}
+              onDecodeBarcodeImage={decodeBarcodeImage}
+              onShowToast={showToast}
+            />
           ) : activePage === 'Orders' ? (
             <FigmaOrders
               orders={vendorOrders}
@@ -367,6 +403,7 @@ export const App: React.FC = () => {
             <FigmaInventory
               items={inventory}
               onSelectProduct={(item) => setSelectedProduct(item)}
+              onDecodeBarcodeImage={decodeBarcodeImage}
               onPatchItem={async (id, data) => {
                 const ok = await patchItem(id, data);
                 if (ok) {

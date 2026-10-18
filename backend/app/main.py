@@ -13,6 +13,8 @@ from app.api.auth import router as auth_router
 from app.api.bill_analyzer import router as bill_router
 from app.api.products import router as products_router
 from app.api.orders import router as orders_router
+from app.api.barcode import router as barcode_router
+from app.api.billing import router as billing_router
 import asyncio
 from app.services.broadcaster import broadcaster
 from sqlalchemy import text
@@ -43,10 +45,44 @@ def ensure_db_migrations():
             item_cols = [r[1] for r in res_items]
             if "category" not in item_cols:
                 conn.execute(text("ALTER TABLE items ADD COLUMN category VARCHAR(50)"))
+            if "barcode" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN barcode VARCHAR(100)"))
+            if "sku" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN sku VARCHAR(100)"))
+            if "cost_price" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN cost_price FLOAT"))
+            if "tax_rate" not in item_cols:
+                conn.execute(text("ALTER TABLE items ADD COLUMN tax_rate FLOAT DEFAULT 0.0"))
             if "is_public" not in item_cols:
                 conn.execute(text("ALTER TABLE items ADD COLUMN is_public BOOLEAN DEFAULT 1"))
             if "image_url" not in item_cols:
                 conn.execute(text("ALTER TABLE items ADD COLUMN image_url VARCHAR(255)"))
+
+            # 3. Bills table columns
+            res_bills = conn.execute(text("PRAGMA table_info(bills)")).fetchall()
+            bill_cols = [r[1] for r in res_bills]
+            if "customer_name" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN customer_name VARCHAR(100)"))
+            if "customer_address" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN customer_address TEXT"))
+            if "status" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN status VARCHAR(30) DEFAULT 'draft'"))
+            if "amount_paid" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN amount_paid FLOAT DEFAULT 0.0"))
+            if "balance_due" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN balance_due FLOAT DEFAULT 0.0"))
+            if "delivery_channel" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN delivery_channel VARCHAR(20)"))
+            if "delivery_status" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN delivery_status VARCHAR(20) DEFAULT 'pending'"))
+            if "delivery_error" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN delivery_error TEXT"))
+            if "stock_deducted" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN stock_deducted BOOLEAN DEFAULT 0"))
+            if "access_token" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN access_token VARCHAR(64)"))
+            if "updated_at" not in bill_cols:
+                conn.execute(text("ALTER TABLE bills ADD COLUMN updated_at DATETIME"))
 
             # 3. Seed demo customer for seamless testability
             demo_cust_phone = "whatsapp:+919999988888"
@@ -117,6 +153,8 @@ app.include_router(dashboard_router)
 app.include_router(bill_router)
 app.include_router(products_router)
 app.include_router(orders_router)
+app.include_router(barcode_router)
+app.include_router(billing_router)
 
 @app.get("/health", tags=["System"])
 def health_check() -> dict:

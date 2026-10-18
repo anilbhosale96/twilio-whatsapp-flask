@@ -8,10 +8,12 @@ from app.services.broadcaster import broadcaster
 def send_whatsapp_or_sms_notification(
     recipient_phone: str,
     message_text: str,
-    media_url: Optional[str] = None
+    media_url: Optional[str] = None,
+    channel: str = "whatsapp"
 ) -> Dict[str, Any]:
     """
     Attempts to send quotation or bill update via Twilio WhatsApp / SMS if configured.
+    Supports channel selection: 'whatsapp' or 'sms'.
     Never fails or throws an exception if Twilio is unconfigured or unavailable.
     Records delivery attempt, timestamp, channel, and error status for the audit log.
     """
@@ -24,17 +26,42 @@ def send_whatsapp_or_sms_notification(
             "status": "skipped",
             "reason": "Twilio credentials not configured in environment.",
             "timestamp": timestamp,
-            "recipient": recipient_phone
+            "recipient": recipient_phone,
+            "channel": channel
         }
 
     try:
         from twilio.rest import Client
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 
-        from_number = settings.TWILIO_WHATSAPP_NUMBER
-        to_number = recipient_phone
-        if not to_number.startswith("whatsapp:") and "whatsapp" in from_number:
-            to_number = f"whatsapp:{to_number.replace('+', '')}"
+        clean_recipient = recipient_phone.replace("whatsapp:", "").strip()
+
+        if channel == "sms":
+            from_number = settings.TWILIO_PHONE_NUMBER
+            if not from_number:
+                return {
+                    "success": False,
+                    "status": "skipped",
+                    "reason": "TWILIO_PHONE_NUMBER is not configured for SMS.",
+                    "timestamp": timestamp,
+                    "recipient": recipient_phone,
+                    "channel": "sms"
+                }
+            to_number = clean_recipient if clean_recipient.startswith("+") else f"+{clean_recipient}"
+        else:
+            from_number = settings.TWILIO_WHATSAPP_NUMBER
+            if not from_number:
+                return {
+                    "success": False,
+                    "status": "skipped",
+                    "reason": "TWILIO_WHATSAPP_NUMBER is not configured for WhatsApp.",
+                    "timestamp": timestamp,
+                    "recipient": recipient_phone,
+                    "channel": "whatsapp"
+                }
+            if not from_number.startswith("whatsapp:"):
+                from_number = f"whatsapp:{from_number}"
+            to_number = f"whatsapp:{clean_recipient}"
 
         kwargs = {
             "from_": from_number,
@@ -51,7 +78,8 @@ def send_whatsapp_or_sms_notification(
             "status": "delivered",
             "sid": msg.sid,
             "timestamp": timestamp,
-            "recipient": recipient_phone
+            "recipient": recipient_phone,
+            "channel": channel
         }
     except Exception as e:
         return {
@@ -78,3 +106,4 @@ def log_notification_event(
 
     logs.append(event_data)
     return json.dumps(logs, ensure_ascii=False)
+

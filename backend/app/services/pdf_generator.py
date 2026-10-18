@@ -190,11 +190,12 @@ def generate_invoice_pdf(
     if vendor_gstin:
         vendor_text += f"<br/><b>GSTIN:</b> {vendor_gstin}"
 
+    order_line = f"<b>Order Ref:</b> {order_id}<br/>" if order_id else "<b>Sale Type:</b> Direct Counter Bill<br/>"
     doc_meta_text = (
         f"<b>{doc_label}</b><br/>"
         f"<b>Document #:</b> {bill_number}<br/>"
         f"<b>Date:</b> {issue_date.strftime('%d-%b-%Y %I:%M %p')}<br/>"
-        f"<b>Order ID:</b> {order_id}<br/>"
+        f"{order_line}"
         f"<b>Revision:</b> v{version} · <b>Status:</b> {status_label}"
     )
 
@@ -250,14 +251,21 @@ def generate_invoice_pdf(
         ]
     ]
 
-    for item in totals_data.get("items", []):
+    for idx, item in enumerate(totals_data.get("items", []), 1):
+        sno = item.get("sno", idx)
+        prod_name = str(item.get("product_name") or item.get("name") or "Item")
+        qty = float(item.get("qty", 1.0))
+        unit = str(item.get("unit", "pcs"))
+        unit_price = float(item.get("unit_price", 0.0))
+        line_total = float(item.get("line_total", qty * unit_price))
+
         table_data.append([
-            Paragraph(str(item["sno"]), body_normal),
-            Paragraph(str(item["product_name"]), body_bold),
-            Paragraph(f"{item['qty']:g}", body_normal),
-            Paragraph(str(item["unit"]), body_normal),
-            Paragraph(f"₹{item['unit_price']:.2f}", body_normal),
-            Paragraph(f"₹{item['line_total']:.2f}", body_bold)
+            Paragraph(str(sno), body_normal),
+            Paragraph(prod_name, body_bold),
+            Paragraph(f"{qty:g}", body_normal),
+            Paragraph(unit, body_normal),
+            Paragraph(f"₹{unit_price:.2f}", body_normal),
+            Paragraph(f"₹{line_total:.2f}", body_bold)
         ])
 
     items_table = Table(
@@ -296,6 +304,15 @@ def generate_invoice_pdf(
         calc_rows.append([Paragraph("Delivery Charge:", body_normal), Paragraph(f"₹{totals_data['delivery_charge']:.2f}", body_normal)])
 
     calc_rows.append([Paragraph("<b>TOTAL AMOUNT:</b>", body_bold), Paragraph(f"<b>₹{totals_data['final_total']:.2f}</b>", body_bold)])
+
+    amount_paid = totals_data.get("amount_paid", 0.0)
+    balance_due = totals_data.get("balance_due", 0.0)
+    payment_method = totals_data.get("payment_method")
+
+    if amount_paid > 0 or payment_status in ["paid", "partially_paid"]:
+        method_str = f" ({payment_method})" if payment_method else ""
+        calc_rows.append([Paragraph(f"Paid{method_str}:", body_normal), Paragraph(f"₹{amount_paid:.2f}", body_normal)])
+        calc_rows.append([Paragraph("<b>Balance Due:</b>", body_bold), Paragraph(f"<b>₹{balance_due:.2f}</b>", body_bold)])
 
     summary_table = Table(
         calc_rows,
@@ -347,3 +364,4 @@ def generate_invoice_pdf(
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+
